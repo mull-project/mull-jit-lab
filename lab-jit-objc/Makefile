@@ -1,9 +1,13 @@
-
 ifeq (, $(LLI))
 define LLI_ERROR_MESSAGE
 
-Provide $LLI (path to lli).
-LLI=/Users/Stanislaw/Projects/LLVM/BuildXcode/Debug/bin/lli
+Provide LLI (path to lli).
+
+The easiest way to get lli is to `brew install llvm`.
+
+Then do:
+LLI=/usr/local/opt/llvm/bin/lli make ...
+
 
 endef
 $(error $(LLI_ERROR_MESSAGE))
@@ -11,7 +15,7 @@ endif
 
 default: compile run
 
-compile:	
+compile:
 	clang -emit-llvm jitobjc.mm -c -o jitobjc.bc
 	clang -emit-llvm -S jitobjc.mm -c -o jitobjc.ll
 

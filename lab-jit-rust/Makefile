@@ -1,5 +1,17 @@
+ifeq (, $(LLI))
+define LLI_ERROR_MESSAGE
 
-LLI ?= /usr/local/opt/llvm/bin/lli
+Provide LLI (path to lli).
+
+The easiest way to get lli is to `brew install llvm`.
+
+Then do:
+LLI=/usr/local/opt/llvm/bin/lli make ...
+
+
+endef
+$(error $(LLI_ERROR_MESSAGE))
+endif
 
 default: compile run
 
