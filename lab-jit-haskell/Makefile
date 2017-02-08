@@ -17,7 +17,8 @@ endif
 default: compile run
 
 compile:
-	ghc -fllvm example.hs
+	# ghc -v5 -fllvm example.hs
+	ghc -v5 -fllvm example.hs # -v5 for maximum verbosity
 
 run:
 	# $(LLI) example.bc
