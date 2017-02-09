@@ -17,10 +17,10 @@ endif
 default: compile run
 
 compile: clean
-	# ghc -fllvm -ddump-llvm -ddump-to-file -keep-tmp-files example.hs
+	# Use -v5 for maximum verbosity
 	ghc -v2 -fllvm -ddump-llvm -ddump-to-file -keep-llvm-files -keep-tmp-files example.hs
-	llvm-as-3.7 example.ll
-	# ghc -v5 -fllvm example.hs # -v5 for maximum verbosity
+	llvm-as-3.7 example.ll # Generates .bc (bitcode)
+	llc-3.7 example.ll # Generates .s (assembly)
 
 run:
 	$(LLI) example.bc
@@ -36,6 +36,5 @@ clean:
 	rm -rfv example.o
 	rm -rfv example.bc
 	rm -rfv example.dump-llvm
-
-
+	rm -rfv example.s
 
