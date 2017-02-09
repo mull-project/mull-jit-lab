@@ -1,0 +1,7 @@
+example
+*.bc
+*.ll
+*.o
+*.s
+*.dump-llvm
+

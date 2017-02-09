@@ -16,14 +16,26 @@ endif
 
 default: compile run
 
-compile:
-	# ghc -v5 -fllvm example.hs
-	ghc -v5 -fllvm example.hs # -v5 for maximum verbosity
+compile: clean
+	# ghc -fllvm -ddump-llvm -ddump-to-file -keep-tmp-files example.hs
+	ghc -v2 -fllvm -ddump-llvm -ddump-to-file -keep-llvm-files -keep-tmp-files example.hs
+	llvm-as-3.7 example.ll
+	# ghc -v5 -fllvm example.hs # -v5 for maximum verbosity
 
 run:
-	# $(LLI) example.bc
+	$(LLI) example.bc
 
 normal:
 	ghc -o example example.hs
 	./example
+
+.PHONY: clean
+clean:
+	rm -rfv example
+	rm -rfv example.hi
+	rm -rfv example.o
+	rm -rfv example.bc
+	rm -rfv example.dump-llvm
+
+
 
