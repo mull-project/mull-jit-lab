@@ -3,5 +3,6 @@ example
 *.ll
 *.o
 *.s
+*.hi
 *.dump-llvm
 
