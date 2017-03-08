@@ -1,0 +1,11 @@
+fork: false
+
+test_framework: XCTest
+bitcode_files:
+- /Users/Stanislaw/Projects/mull-jit-lab/lab-jit-swift-xctest/jitswift.bc
+
+mutation_operators:
+# - add_mutation_operator
+# - negate_mutation_operator
+- remove_void_function_mutation_operator
+
