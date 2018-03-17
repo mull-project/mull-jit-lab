@@ -3,4 +3,5 @@
 *.ll
 jitobjc
 *.dylib
+**/BuildXcode/**
 
