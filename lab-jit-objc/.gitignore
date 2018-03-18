@@ -2,4 +2,6 @@
 *.bc
 *.ll
 jitobjc
+*.dylib
+**/BuildXcode/**
 
