@@ -104,63 +104,109 @@ void mull::objc::Runtime::registerSelectors(void *selRefsSectionPtr,
   }
 }
 
-void mull::objc::Runtime::registerClasses(void *classListSectionPtr,
-                                          uintptr_t classListSectionSize) {
-  errs() << "ObjCHack[void *]: " << classListSectionPtr << ", " << classListSectionSize << "\n";
+void mull::objc::Runtime::addClassesFromSection(void *sectionPtr,
+                                                uintptr_t sectionSize) {
+  errs() << "mull::objc::Runtime> adding class_t for later registration: "
+         << sectionPtr << ", " << sectionSize << "\n";
 
   // 16 is "8 + alignment" (don't know yet what alignment is for).
-  for (uintptr_t i = 0; i < classListSectionSize / 2; i += 8) {
-    const class64_t *clzPointer = (class64_t *)((uint8_t *)classListSectionPtr + i);
-    //errs() << clzPointer->getDebugDescription();
+  for (uintptr_t i = 0; i < sectionSize / 2; i += 8) {
+    class64_t *const clzPointer = (class64_t *)((uint8_t *)sectionPtr + i);
+    errs() << "mull::objc::Runtime> adding class: "
+           << clzPointer->getIsaPointer()->getDataPointer()->getName() << "\n";
 
-    const class64_t *clzIsaPointer = clzPointer->getIsaPointer();
-    Class clz =
-      objc_allocateClassPair((Class)clzIsaPointer->getSuperclassPointer(),
-                             clzIsaPointer->getDataPointer()->getName(),
-                             0);
+    class64_t *clzIsaPointer = clzPointer->getIsaPointer();
 
-    /* INSTANCE METHODS */
-    const class_ro64_t *clzIsaData = clzIsaPointer->getDataPointer();
-
-    const method_list64_t *clzMethodListPtr = clzIsaData->getMethodListPtr();
-    if (clzMethodListPtr) {
-      const method64_t *firstMethodPtr = clzMethodListPtr->getFirstMethodPointer();
-
-      for (uint32_t i = 0; i < clzMethodListPtr->count; i++) {
-        const method64_t *methodPtr = firstMethodPtr + i;
-
-        errs() << methodPtr->getDebugDescription();
-
-        class_addMethod(clz, sel_registerName((char *)methodPtr->name), (IMP)methodPtr->imp, (char *)methodPtr->types);
-      }
-    }
-
-    /* CLASS REGISTRATION */
-    objc_registerClassPair(clz);
-    assert(mull_isClassRegistered(clz));
-    assert(mull_isClassRegistered(objc_getClass(clzIsaPointer->getDataPointer()->getName())));
-
-    /* METACLASS METHODS REGISTRATION */
-    Class metaClz = objc_getMetaClass(object_getClassName(clz));
-
-    const method_list64_t *metaClzMethodListPtr = clzIsaPointer->getIsaPointer()->getDataPointer()->getMethodListPtr();
-    if (metaClzMethodListPtr) {
-      const method64_t *firstMetaclassMethodPtr = metaClzMethodListPtr->getFirstMethodPointer();
-
-      errs() << "Dumping metaclass' methods" << "\n";
-      for (uint32_t i = 0; i < metaClzMethodListPtr->count; i++) {
-        const method64_t *methodPtr = firstMetaclassMethodPtr + i;
-
-        errs() << methodPtr->getDebugDescription();
-
-        class_addMethod(metaClz,
-                        sel_registerName((char *)methodPtr->name),
-                        (IMP)methodPtr->imp,
-                        (char *)methodPtr->types);
-      }
-    }
-
-    mull_dumpObjcMethods(clz);
-    mull_dumpObjcMethods(metaClz);
+    classesToRegister.push(clzIsaPointer);
   }
+}
+
+void mull::objc::Runtime::registerClasses() {
+
+  while (classesToRegister.empty() == false) {
+    class64_t *clzIsaPointer = classesToRegister.front();
+    classesToRegister.pop();
+
+    errs() << "registerClasses() " << clzIsaPointer->getDataPointer()->getName() << "\n";
+
+    class64_t *superClz64 = clzIsaPointer->getSuperclassPointer();
+    Class superClz = (Class)superClz64;
+    if (mull_isClassRegistered(superClz) == false) {
+      const char *superclzName = superClz64->getDataPointer()->getName();
+      if (Class registeredSuperClz = objc_getClass(superclzName)) {
+        errs() << "registerClasses() " << "superclass is registered" << "\n";
+        superClz = registeredSuperClz;
+      } else {
+        errs() << "registerClasses() " << "superclass is not registered" << "\n";
+
+        classesToRegister.push(clzIsaPointer);
+        continue;
+      }
+    }
+
+    errs() << "registerClasses() " << "superclass is registered" << "\n";
+    assert(superClz);
+
+    registerOneClass(clzIsaPointer, superClz);
+  }
+
+  assert(classesToRegister.empty());
+}
+
+void mull::objc::Runtime::registerOneClass(class64_t *clzIsaPointer,
+                                           Class superclass) {
+  Class clz =
+    objc_allocateClassPair(superclass,
+                           clzIsaPointer->getDataPointer()->getName(),
+                           0);
+
+  /* INSTANCE METHODS */
+  const class_ro64_t *clzIsaData = clzIsaPointer->getDataPointer();
+
+  const method_list64_t *clzMethodListPtr = clzIsaData->getMethodListPtr();
+  if (clzMethodListPtr) {
+    const method64_t *firstMethodPtr = clzMethodListPtr->getFirstMethodPointer();
+
+    for (uint32_t i = 0; i < clzMethodListPtr->count; i++) {
+      const method64_t *methodPtr = firstMethodPtr + i;
+
+      errs() << methodPtr->getDebugDescription();
+
+      class_addMethod(clz, sel_registerName((char *)methodPtr->name), (IMP)methodPtr->imp, (char *)methodPtr->types);
+    }
+  }
+
+  /* CLASS REGISTRATION */
+  objc_registerClassPair(clz);
+    //clzPointer->isa = ((class64_t *)clz);
+
+  errs() << "+++ Registering Class: " << object_getClassName(clz)
+  << " (" << clz << ")" << "\n";
+
+  assert(mull_isClassRegistered(clz));
+    //    assert(mull_isClassRegistered(objc_getClass(clzIsaPointer->getDataPointer()->getName())));
+    //    assert(mull_isClassRegistered(objc_getClass(clzPointer->getIsaPointer()->getDataPointer()->getName())));
+
+  /* METACLASS METHODS REGISTRATION */
+  Class metaClz = objc_getMetaClass(object_getClassName(clz));
+
+  const method_list64_t *metaClzMethodListPtr = clzIsaPointer->getIsaPointer()->getDataPointer()->getMethodListPtr();
+  if (metaClzMethodListPtr) {
+    const method64_t *firstMetaclassMethodPtr = metaClzMethodListPtr->getFirstMethodPointer();
+
+    errs() << "Dumping metaclass' methods" << "\n";
+    for (uint32_t i = 0; i < metaClzMethodListPtr->count; i++) {
+      const method64_t *methodPtr = firstMetaclassMethodPtr + i;
+
+      errs() << methodPtr->getDebugDescription();
+
+      class_addMethod(metaClz,
+                      sel_registerName((char *)methodPtr->name),
+                      (IMP)methodPtr->imp,
+                      (char *)methodPtr->types);
+    }
+  }
+
+  mull_dumpObjcMethods(clz);
+  mull_dumpObjcMethods(metaClz);
 }

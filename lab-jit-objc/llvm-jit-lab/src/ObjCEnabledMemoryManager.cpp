@@ -55,7 +55,9 @@ void ObjCEnabledMemoryManager::registerObjC() {
 
   for (ObjectSectionEntry &entry: objcSections) {
     if (entry.section.find("__objc_classlist") != StringRef::npos) {
-      runtime.registerClasses(entry.pointer, entry.size);
+      runtime.addClassesFromSection(entry.pointer, entry.size);
     }
   }
+
+  runtime.registerClasses();
 }

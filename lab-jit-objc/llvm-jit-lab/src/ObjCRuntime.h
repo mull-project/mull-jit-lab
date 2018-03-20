@@ -15,6 +15,7 @@
 #include <iostream>
 #include <iomanip>
 #include <string>
+#include <queue>
 
 using namespace llvm;
 
@@ -174,12 +175,19 @@ struct class64_t {
 namespace mull { namespace objc {
 
 class Runtime {
+  std::queue<class64_t *> classesToRegister;
+
+  void registerOneClass(class64_t *isaPtr, Class superclass);
+
+
 public:
   void registerSelectors(void *selRefsSectionPtr,
                          uintptr_t selRefsSectionSize);
 
-  void registerClasses(void *classListSectionPtr,
-                       uintptr_t classListSectionSize);
+  void addClassesFromSection(void *sectionPtr,
+                             uintptr_t sectionSize);
+
+  void registerClasses();
 };
 
 } }
