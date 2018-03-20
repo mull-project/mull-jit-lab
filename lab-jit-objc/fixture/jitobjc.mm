@@ -10,10 +10,6 @@
 #import "MUT_XCTestDriver.h"
 
 extern "C" void objc_function () {
-
-    SomeClass *someClass = [SomeClass new];
-    [someClass hello];
-
 	printf("before test call\n");
 	MUT_RunXCTests();
 	printf("after test call\n");
