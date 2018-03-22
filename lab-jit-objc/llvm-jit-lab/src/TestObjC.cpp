@@ -134,4 +134,12 @@ TEST(LLVMJIT, ObjCRegistration) {
   auto objcFunction = ((void (*)(void))(intptr_t)mainPointer);
 
   objcFunction();
+//  objcFunction();
+//  objcFunction();
+//  objcFunction();
+//  objcFunction();
+//  objcFunction();
+//  objcFunction();
+//  objcFunction();
+//  objcFunction();
 }
