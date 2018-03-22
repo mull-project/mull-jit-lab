@@ -11,7 +11,16 @@
 
 extern "C" void objc_function () {
 	printf("before test call\n");
-	MUT_RunXCTests();
+    // [FirstClass clazzMethod];
+
+    printf("before hello\n");
+
+    FirstClass *fss = [FirstClass new];
+    // [fss hello];
+
+    printf("after hello\n");
+
+	// MUT_RunXCTests();
 	printf("after test call\n");
 }
 
