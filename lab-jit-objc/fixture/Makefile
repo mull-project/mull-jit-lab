@@ -26,16 +26,16 @@ CCFLAGS=$(SYSROOT) -F$(MACOS_FRAMEWORKS_DIR)
 
 
 compile:
-	$(CC) $(CCFLAGS) -fno-objc-arc -emit-llvm jitobjc.mm -c -o jitobjc.bc
-	$(CC) $(CCFLAGS) -emit-llvm SomeClass.mm -c -o SomeClass.bc
+	$(CC) $(CCFLAGS) -fobjc-arc -emit-llvm jitobjc.mm -c -o jitobjc.bc
+	$(CC) $(CCFLAGS) -fobjc-arc -emit-llvm SomeClass.mm -c -o SomeClass.bc
 
-	$(CC) $(CCFLAGS) jitobjc.mm -c -o jitobjc.o
-	$(CC) $(CCFLAGS) SomeClass.mm -c -o SomeClass.o
+	$(CC) $(CCFLAGS) -fobjc-arc jitobjc.mm -c -o jitobjc.o
+	$(CC) $(CCFLAGS) -fobjc-arc SomeClass.mm -c -o SomeClass.o
 
-	$(CC) $(CCFLAGS) $(XCTEST_FLAGS) -shared -undefined dynamic_lookup -o jitobjc.dylib jitobjc.mm
-	$(CC) $(CCFLAGS) $(XCTEST_FLAGS) -shared -undefined dynamic_lookup -o SomeClass.dylib SomeClass.mm
-	$(CC) $(CCFLAGS) $(XCTEST_FLAGS) -shared -undefined dynamic_lookup -o MUT_XCTestDriver.dylib MUT_XCTestDriver.mm
-	$(CC) $(CCFLAGS) -emit-llvm -S jitobjc.mm -c -o jitobjc.ll
+	$(CC) $(CCFLAGS) $(XCTEST_FLAGS) -fobjc-arc -shared -undefined dynamic_lookup -o jitobjc.dylib jitobjc.mm
+	$(CC) $(CCFLAGS) $(XCTEST_FLAGS) -fobjc-arc -shared -undefined dynamic_lookup -o SomeClass.dylib SomeClass.mm
+	$(CC) $(CCFLAGS) $(XCTEST_FLAGS) -fobjc-arc -shared -undefined dynamic_lookup -o MUT_XCTestDriver.dylib MUT_XCTestDriver.mm
+	$(CC) $(CCFLAGS) -fobjc-arc -emit-llvm -S jitobjc.mm -c -o jitobjc.ll
 
 run:
 	$(LLI) \
@@ -46,5 +46,5 @@ run:
 	jitobjc.bc
 
 run_normal:
-	$(CC)++ -framework Cocoa jitobjc.mm -o jitobjc
+	$(CC)++ -fobjc-arc -framework Cocoa jitobjc.mm -o jitobjc
 	./jitobjc
