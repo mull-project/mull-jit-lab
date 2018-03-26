@@ -32,8 +32,7 @@
     NSLog(@"FirstClass +clazzMethod\n");
 }
 - (BOOL)hello {
-    NSLog(@"FirstClass -hello: %@ %@\n",
-           self.theSameProperty, self.uniqueProperty1);
+    NSLog(@"FirstClass -hello %@ %@", self.theSameProperty, self.uniqueProperty1);
     return YES;
 }
 @end

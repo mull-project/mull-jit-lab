@@ -60,4 +60,17 @@ void ObjCEnabledMemoryManager::registerObjC() {
   }
 
   runtime.registerClasses();
+
+  for (ObjectSectionEntry &entry: objcSections) {
+    if (entry.section.find("__objc_classrefs") != StringRef::npos) {
+      runtime.addClassesFromClassRefsSection(entry.pointer, entry.size);
+    }
+  }
+
+  for (ObjectSectionEntry &entry: objcSections) {
+    if (entry.section.find("__objc_superrefs") != StringRef::npos) {
+      runtime.addClassesFromSuperclassRefsSection(entry.pointer, entry.size);
+    }
+  }
+
 }
