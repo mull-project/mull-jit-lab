@@ -18,21 +18,27 @@ CCFLAGS=$(SYSROOT) -F$(MACOS_FRAMEWORKS_DIR)
 
 OUTPUT_PATH=$(PWD)/bitcode
 
-all: 001_minimal_test 002_calling_class_method
+FIXTURES_IN=001_minimal_test 002_calling_class_method
+FIXTURES_OUT_BC=$(FIXTURES_IN:%=$(OUTPUT_PATH)/%.bc)
+FIXTURES_OUT_LL=$(FIXTURES_IN:%=$(OUTPUT_PATH)/%.ll)
+FIXTURES_OUT_O=$(FIXTURES_IN:%=$(OUTPUT_PATH)/%.o)
 
-001_minimal_test: ## Basic test
-	mkdir -p $(OUTPUT_PATH)
-	cd $@ && $(CC) $(CCFLAGS) -fobjc-arc -emit-llvm $@.m -c -o $(OUTPUT_PATH)/$@.bc
-	cd $@ && $(CC) $(CCFLAGS) -fobjc-arc -emit-llvm -S $@.m -c -o $(OUTPUT_PATH)/$@.ll
-	cd $@ && $(CC) $(CCFLAGS) -fobjc-arc $@.m -c -o $(OUTPUT_PATH)/$@.o
-.PHONY: 001_minimal_test
+all: $(FIXTURES_OUT_BC) # $(FIXTURES_OUT_LL) $(FIXTURES_OUT_O)
 
-002_calling_class_method: ## Testing class method calls
+$(OUTPUT_PATH)/%.bc: | $(OUTPUT_PATH)
+	cd $(OUTPUT_PATH) && \
+	  $(CC) $(CCFLAGS) -fobjc-arc -emit-llvm $(PWD)/$*/$*.m -c -o $@
+
+$(OUTPUT_PATH)/%.ll: | $(OUTPUT_PATH)
+	cd $(OUTPUT_PATH) && \
+	  $(CC) $(CCFLAGS) -fobjc-arc -emit-llvm -S $(PWD)/$*/$*.m -c -o $@
+
+$(OUTPUT_PATH)/%.o: | $(OUTPUT_PATH)
+	cd $(OUTPUT_PATH) && \
+	  $(CC) $(CCFLAGS) -fobjc-arc $(PWD)/$*/$*.m -c -o $@
+
+$(OUTPUT_PATH):
 	mkdir -p $(OUTPUT_PATH)
-	cd $@ && $(CC) $(CCFLAGS) -fobjc-arc -emit-llvm $@.m -c -o $(OUTPUT_PATH)/$@.bc
-	cd $@ && $(CC) $(CCFLAGS) -fobjc-arc -emit-llvm -S $@.m -c -o $(OUTPUT_PATH)/$@.ll
-	cd $@ && $(CC) $(CCFLAGS) -fobjc-arc $@.m -c -o $(OUTPUT_PATH)/$@.o
-.PHONY: 002_calling_class_method
 
 clean: ## Cleans the build folder.
 	rm -rfv $(OUTPUT_PATH)
