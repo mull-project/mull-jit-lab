@@ -16,6 +16,8 @@
 using namespace llvm;
 using namespace llvm::orc;
 
+const char *const FixturesPath = "/opt/mull-jit-lab/lab-jit-objc/fixtures/bitcode";
+
 extern "C" int objc_printf( const char * format, ... ) {
   errs() << "**** objc_printf ****" << "\n";
 
@@ -74,7 +76,7 @@ std::unique_ptr<llvm::Module> loadModuleAtPath(const std::string &path,
   return std::move(llvmModule.get());
 }
 
-TEST(LLVMJIT, ObjCRegistration) {
+TEST(DISABLED_LLVMJIT, ObjCRegistration) {
   // These lines are needed for TargetMachine TM to be created correctly.
   llvm::InitializeNativeTarget();
   llvm::InitializeNativeTargetAsmPrinter();
@@ -142,4 +144,62 @@ TEST(LLVMJIT, ObjCRegistration) {
 //  objcFunction();
 //  objcFunction();
 //  objcFunction();
+}
+
+TEST(LLVMJIT, Test001_BasicTest) {
+    // These lines are needed for TargetMachine TM to be created correctly.
+  llvm::InitializeNativeTarget();
+  llvm::InitializeNativeTargetAsmPrinter();
+  llvm::InitializeNativeTargetAsmParser();
+
+  llvm::sys::DynamicLibrary::LoadLibraryPermanently(nullptr);
+
+  assert(!sys::DynamicLibrary::LoadLibraryPermanently(
+    "/System/Library/Frameworks/Foundation.framework/Versions/Current/Foundation"
+  ));
+
+  llvm::LLVMContext llvmContext;
+
+  char fixturePath[255];
+  snprintf(fixturePath, sizeof(fixturePath), "%s/%s", FixturesPath, "001_minimal_test.bc");
+
+  auto objcModule = loadModuleAtPath(fixturePath, llvmContext);
+
+  ObjectLinkingLayer<> ObjLayer;
+
+  std::unique_ptr<TargetMachine> TM(
+    EngineBuilder().selectTarget(llvm::Triple(), "", "", SmallVector<std::string, 1>()));
+
+  assert(TM.get());
+
+  SimpleCompiler compiler(*TM);
+
+  auto objcCompiledModule = compiler(*objcModule);
+
+  std::vector<object::ObjectFile*> objcSet;
+  objcSet.push_back(objcCompiledModule.getBinary());
+
+  ObjcResolver objcResolver;
+  auto objcHandle = ObjLayer.addObjectSet(std::move(objcSet),
+                                          make_unique<ObjCEnabledMemoryManager>(),
+                                          &objcResolver);
+
+  ObjLayer.emitAndFinalize(objcHandle);
+
+  std::string functionName = "_run";
+  JITSymbol symbol = ObjLayer.findSymbol(functionName, false);
+
+  void *fpointer =
+  reinterpret_cast<void *>(static_cast<uintptr_t>(symbol.getAddress()));
+
+  if (fpointer == nullptr) {
+    errs() << "CustomTestRunner> Can't find pointer to function: "
+    << functionName << "\n";
+    exit(1);
+  }
+
+  auto runnerFunction = ((int (*)(void))(intptr_t)fpointer);
+
+  int result = runnerFunction();
+  EXPECT_EQ(result, 1234);
 }
