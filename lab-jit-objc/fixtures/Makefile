@@ -18,7 +18,10 @@ CCFLAGS=$(SYSROOT) -F$(MACOS_FRAMEWORKS_DIR)
 
 OUTPUT_PATH=$(PWD)/bitcode
 
-FIXTURES_IN=001_minimal_test 002_calling_class_method
+FIXTURES_IN=001_minimal_test \
+            002_calling_class_method \
+            003_calling_a_super_instance_method
+
 FIXTURES_OUT_BC=$(FIXTURES_IN:%=$(OUTPUT_PATH)/%.bc)
 FIXTURES_OUT_LL=$(FIXTURES_IN:%=$(OUTPUT_PATH)/%.ll)
 FIXTURES_OUT_O=$(FIXTURES_IN:%=$(OUTPUT_PATH)/%.o)
