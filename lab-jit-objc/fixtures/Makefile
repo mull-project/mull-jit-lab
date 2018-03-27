@@ -17,12 +17,22 @@ MACOS_FRAMEWORKS_DIR=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX
 CCFLAGS=$(SYSROOT) -F$(MACOS_FRAMEWORKS_DIR)
 
 OUTPUT_PATH=$(PWD)/bitcode
+
+all: 001_minimal_test 002_calling_class_method
+
 001_minimal_test: ## Basic test
 	mkdir -p $(OUTPUT_PATH)
 	cd $@ && $(CC) $(CCFLAGS) -fobjc-arc -emit-llvm $@.m -c -o $(OUTPUT_PATH)/$@.bc
 	cd $@ && $(CC) $(CCFLAGS) -fobjc-arc -emit-llvm -S $@.m -c -o $(OUTPUT_PATH)/$@.ll
 	cd $@ && $(CC) $(CCFLAGS) -fobjc-arc $@.m -c -o $(OUTPUT_PATH)/$@.o
 .PHONY: 001_minimal_test
+
+002_calling_class_method: ## Testing class method calls
+	mkdir -p $(OUTPUT_PATH)
+	cd $@ && $(CC) $(CCFLAGS) -fobjc-arc -emit-llvm $@.m -c -o $(OUTPUT_PATH)/$@.bc
+	cd $@ && $(CC) $(CCFLAGS) -fobjc-arc -emit-llvm -S $@.m -c -o $(OUTPUT_PATH)/$@.ll
+	cd $@ && $(CC) $(CCFLAGS) -fobjc-arc $@.m -c -o $(OUTPUT_PATH)/$@.o
+.PHONY: 002_calling_class_method
 
 clean: ## Cleans the build folder.
 	rm -rfv $(OUTPUT_PATH)
