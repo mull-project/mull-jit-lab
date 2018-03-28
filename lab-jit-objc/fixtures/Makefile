@@ -21,7 +21,9 @@ OUTPUT_PATH=$(PWD)/bitcode
 FIXTURES_IN=001_minimal_test \
             002_calling_class_method \
             003_calling_a_super_method_on_instance \
-            004_calling_a_super_method_on_class
+            004_calling_a_super_method_on_class \
+            005_ivars_of_class_and_superclass \
+            006_properties_of_class_and_superclass
 
 FIXTURES_OUT_BC=$(FIXTURES_IN:%=$(OUTPUT_PATH)/%.bc)
 FIXTURES_OUT_LL=$(FIXTURES_IN:%=$(OUTPUT_PATH)/%.ll)
