@@ -1,88 +1,8 @@
 #include "ObjCRuntime.h"
 
-bool mull_isClassRegistered(Class cls) {
-  int numRegisteredClasses = objc_getClassList(NULL, 0);
-  assert(numRegisteredClasses > 0);
+#include "ObjCRuntimeHelpers.h"
 
-  Class *classes = (Class *)malloc(sizeof(Class) * numRegisteredClasses);
-
-  numRegisteredClasses = objc_getClassList(classes, numRegisteredClasses);
-
-  for (int i = 0; i < numRegisteredClasses; i++) {
-      //    errs() << object_getClassName(classes[i]) << "\n";
-    if (classes[i] == cls) {
-      free(classes);
-      return true;
-    }
-  }
-
-  free(classes);
-  return false;
-}
-
-Class class_getClassByName(const char *name) {
-  assert(name);
-  int numRegisteredClasses = objc_getClassList(NULL, 0);
-  assert(numRegisteredClasses > 0);
-
-  Class *classes = (Class *)malloc(sizeof(Class) * numRegisteredClasses);
-
-  numRegisteredClasses = objc_getClassList(classes, numRegisteredClasses);
-
-  for (int i = 0; i < numRegisteredClasses; i++) {
-    if (strcmp(object_getClassName(classes[i]), name) == 0) {
-      Class foundClass = classes[i];
-      assert(class_isMetaClass(foundClass) == false);
-      free(classes);
-      return foundClass;
-    }
-  }
-
-  free(classes);
-
-  errs() << "Could not find a class: " << name << "\n";
-  abort();
-
-  return NULL;
-}
-
-void mull_dumpObjcMethods(Class clz) {
-  printf("mull_dumpObjcMethods() dumping class: %p\n", (void *)clz);
-
-  unsigned int methodCount = 0;
-  Method *methods = class_copyMethodList(clz, &methodCount);
-
-  printf("Found %d methods on '%s'\n", methodCount, class_getName(clz));
-
-  for (unsigned int i = 0; i < methodCount; i++) {
-    Method method = methods[i];
-
-    printf("\t'%s' has method named '%s' of encoding '%s' %p\n",
-           class_getName(clz),
-           sel_getName(method_getName(method)),
-           method_getTypeEncoding(method),
-           (void *)method);
-
-    /**
-     *  Or do whatever you need here...
-     */
-  }
-
-  free(methods);
-}
-
-void hexPrint(const char *const bytes, size_t size) {
-  printf("hexPrint:\n");
-
-  for (size_t i = 0; i < size; i++) {
-      //    printf("%ld: %02hhx ", i, bytes[i]);
-    printf("%02hhx ", bytes[i]);
-  }
-
-  printf("\n");
-}
-
-#pragma mark - mull::objc::Runtime
+namespace mull { namespace objc {
 
 mull::objc::Runtime::~Runtime() {
   for (Class &clz: runtimeClasses) {
@@ -140,7 +60,7 @@ void mull::objc::Runtime::addClassesFromClassRefsSection(void *sectionPtr,
     assert(className);
     errs() << "Considering " << className << "\n";
 
-    Class newClz = class_getClassByName(className);
+    Class newClz = RuntimeHelpers::class_getClassByName(className);
     assert(class_isMetaClass(newClz) == false);
     errs() << "\tclass has address: " << (void *)newClz << "\n";
 
@@ -197,7 +117,7 @@ void mull::objc::Runtime::addClassesFromSuperclassRefsSection(void *sectionPtr,
     }
 
     errs() << "Considering " << className << "\n";
-    Class newClz = class_getClassByName(className);
+    Class newClz = RuntimeHelpers::class_getClassByName(className);
 
     assert(refType != 0);
     if (refType == 2) {
@@ -224,7 +144,7 @@ void mull::objc::Runtime::registerClasses() {
 
     class64_t *superClz64 = classref->getSuperclassPointer();
     Class superClz = (Class)superClz64;
-    if (mull_isClassRegistered(superClz) == false) {
+    if (RuntimeHelpers::class_isRegistered(superClz) == false) {
       const char *superclzName = superClz64->getDataPointer()->getName();
       if (Class registeredSuperClz = objc_getClass(superclzName)) {
         errs() << "registerClasses() " << "superclass is registered" << "\n";
@@ -249,10 +169,6 @@ void mull::objc::Runtime::registerClasses() {
   }
 
   assert(classesToRegister.empty());
-}
-
-static void dummy() {
-  abort();
 }
 
 Class mull::objc::Runtime::registerOneClass(class64_t **classrefPtr,
@@ -280,8 +196,6 @@ Class mull::objc::Runtime::registerOneClass(class64_t **classrefPtr,
       const method64_t *methodPtr = methods + i;
 
       errs() << methodPtr->getDebugDescription();
-
-//      auto imp = ((void (*)(void))dummy);
 
       IMP imp = (IMP)methodPtr->imp;
       BOOL added = class_addMethod(clz,
@@ -338,7 +252,7 @@ Class mull::objc::Runtime::registerOneClass(class64_t **classrefPtr,
   errs() << "+++ Registering Class: " << object_getClassName(clz)
   << " (" << clz << ")" << "\n";
 
-  assert(mull_isClassRegistered(clz));
+  assert(RuntimeHelpers::class_isRegistered(clz));
 
   /* METACLASS METHODS REGISTRATION */
   if (metaClzMethodListPtr) {
@@ -349,7 +263,6 @@ Class mull::objc::Runtime::registerOneClass(class64_t **classrefPtr,
       const method64_t *methodPtr = firstMetaclassMethodPtr + i;
 
       errs() << methodPtr->getDebugDescription();
-//      auto imp = (IMP)((void (*)(void))dummy);
 
       auto imp = (IMP)methodPtr->imp;
       class_addMethod(metaClz,
@@ -362,8 +275,8 @@ Class mull::objc::Runtime::registerOneClass(class64_t **classrefPtr,
   Class registeredMetaClass = objc_getMetaClass(classref->getDataPointer()->getName());
   assert(metaClz == registeredMetaClass);
 
-  mull_dumpObjcMethods(clz);
-  mull_dumpObjcMethods(metaClz);
+  RuntimeHelpers::class_dumpMethods(clz);
+  RuntimeHelpers::class_dumpMethods(metaClz);
 
   return clz;
 }
@@ -430,3 +343,6 @@ mull::objc::Runtime::parsePropertyAttributes(const char *const attributesStr,
 
   *count = attrFound;
 }
+
+} }
+

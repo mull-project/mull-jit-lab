@@ -1,30 +1,16 @@
 
 #pragma once
 
-#include "llvm/Support/raw_ostream.h"
-
-#include <dlfcn.h>
-
 #include "ObjCType.h"
 
 #include <objc/objc.h>
-#include <objc/message.h>
 
-#include <mach-o/getsect.h>
-#include <mach-o/dyld.h>
+#include <llvm/Support/raw_ostream.h>
 
 #include <queue>
 #include <vector>
 
 using namespace llvm;
-
-bool mull_isClassRegistered(Class cls);
-
-Class class_getClassByName(const char *name);
-
-void mull_dumpObjcMethods(Class clz);
-
-bool isValidPointer(void *ptr);
 
 #pragma mark -
 

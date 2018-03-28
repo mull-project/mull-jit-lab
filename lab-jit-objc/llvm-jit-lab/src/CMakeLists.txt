@@ -1,6 +1,8 @@
 set(sources
   ObjCRuntime.mm
+  ObjCRuntimeHelpers.mm
   ObjCEnabledMemoryManager.cpp
+  ObjCType.mm
   TestObjC.cpp
 )
 
