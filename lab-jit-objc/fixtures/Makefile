@@ -5,7 +5,7 @@ help: ## Show this help message.
 	@grep -E '^[0-9a-zA-Z_\.-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
 CC=/opt/llvm-3.9/bin/clang
-# CC=/opt/llvm-5.0.0/bin/clang
+# CC=/opt/llvm-6.0.0/bin/clang
 SYSROOT=-isysroot $(shell xcrun --sdk macosx --show-sdk-path)
 
 default: compile run
@@ -23,7 +23,8 @@ FIXTURES_IN=001_minimal_test \
             003_calling_a_super_method_on_instance \
             004_calling_a_super_method_on_class \
             005_ivars_of_class_and_superclass \
-            006_properties_of_class_and_superclass
+            006_properties_of_class_and_superclass \
+            xctest_objc_001_minimal_xctestcase_run
 
 FIXTURES_OUT_BC=$(FIXTURES_IN:%=$(OUTPUT_PATH)/%.bc)
 FIXTURES_OUT_LL=$(FIXTURES_IN:%=$(OUTPUT_PATH)/%.ll)

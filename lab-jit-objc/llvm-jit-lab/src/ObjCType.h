@@ -93,7 +93,10 @@ struct class64_t {
     return (class64_t *)superclass;
   }
   class_ro64_t *getDataPointer() const {
-    return (class_ro64_t *)data;
+    #define FAST_DATA_MASK          0x00007ffffffffff8UL
+
+    return (class_ro64_t *)((uintptr_t)data & FAST_DATA_MASK);
+//    return (class_ro64_t *)data;
   }
 
   std::string getDebugDescription(int level = 0) const;
