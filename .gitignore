@@ -1,7 +1,4 @@
 *.o
 *.ll
 *.bc
-**/build/**
-**/Build/**
-**/xcuserdata/**
 
