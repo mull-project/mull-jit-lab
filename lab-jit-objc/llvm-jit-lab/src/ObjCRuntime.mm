@@ -6,6 +6,7 @@ namespace mull { namespace objc {
 
 mull::objc::Runtime::~Runtime() {
   for (Class &clz: runtimeClasses) {
+    errs() << "disposing class: " << class_getName(clz) << "\n";
     objc_disposeClassPair(clz);
   }
 }
