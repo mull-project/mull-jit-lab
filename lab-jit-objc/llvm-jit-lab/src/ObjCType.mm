@@ -15,8 +15,8 @@ std::string method64_t::getDebugDescription(int level) const {
 
   os << padding << "[method_list64_t]\n";
   os << padding << "\t" << "name: " << sel_getName(name) << "\n";
-  os << padding << "\t" << "types: " << (char *)types << "\n";
-  os << padding << "\t" << "imp: " <<  (void **)&imp << "/" << (void *)imp << "\n";
+  os << padding << "\t" << "types: " << (const char *)types << "\n";
+  os << padding << "\t" << "imp: " <<  (const void * const *)&imp << "/" << (const void *)imp << "\n";
 
   return os.str();
 }
@@ -34,7 +34,7 @@ std::string method_list64_t::getDebugDescription(int level) const {
   os << padding << "entsize: " << entsize << "\n";
   os << padding << "count: " << count << "\n";
   for (uint32_t i = 0; i < count; i++) {
-    method64_t *method = getFirstMethodPointer() + i;
+    const method64_t *method = getFirstMethodPointer() + i;
     os << method->getDebugDescription(level + 1);
   }
 
@@ -71,19 +71,19 @@ std::string class64_t::getDebugDescription(int level) const {
   if (RuntimeHelpers::isValidPointer(getIsaPointer())) {
     os << getIsaPointer()->getDebugDescription(level + 1);
   }
-  os << padding << "superclass: " << (void **)&superclass << "/" << (void *)superclass << "\n";
+  os << padding << "superclass: " << (void *const *)&superclass << "/" << (void *)superclass << "\n";
   if (RuntimeHelpers::isValidPointer(getSuperclassPointer())) {
     class64_t *superclassPointer = getSuperclassPointer();
     os << superclassPointer->getDebugDescription(level + 1);
   }
   if (RuntimeHelpers::isValidPointer((void *)cache)) {
-    os << padding << "cache: " << (void **)&cache << "/" << (void *)cache << "\n";
+    os << padding << "cache: " << (void *const *)&cache << "/" << (void *)cache << "\n";
   }
   if (RuntimeHelpers::isValidPointer((void *)vtable)) {
-    os << padding << "vtable: " << (void **)&vtable << "/" << (void *)vtable << "\n";
+    os << padding << "vtable: " << (void *const *)&vtable << "/" << (void *)vtable << "\n";
   }
 
-  os << padding << "data: " << (void **)&data << "/" << (void *)data << "\n";
+  os << padding << "data: " << (void *const *)&data << "/" << (void *)data << "\n";
   if (RuntimeHelpers::isValidPointer((void *)data)) {
     os << getDataPointer()->getDebugDescription(level + 1);
   }
