@@ -159,14 +159,12 @@ void mull::objc::Runtime::registerClasses() {
     }
 
     errs() << "registerClasses() " << "superclass is registered" << "\n";
-//    errs() << classref->getDebugDescription() << "\n";
-
     assert(superClz);
 
     Class runtimeClass = registerOneClass(classrefPtr, superClz);
     runtimeClasses.push_back(runtimeClass);
 
-    errs() << classref->getDebugDescription() << "\n";
+//    errs() << classref->getDebugDescription() << "\n";
   }
 
   assert(classesToRegister.empty());
@@ -174,7 +172,10 @@ void mull::objc::Runtime::registerClasses() {
 
 Class mull::objc::Runtime::registerOneClass(class64_t **classrefPtr,
                                             Class superclass) {
+
   class64_t *classref = *classrefPtr;
+  errs() << "registerOneClass() start: " << classref->getDataPointer()->getName() << "\n";
+
   class64_t *metaclassRef = classref->getIsaPointer();
 
   classRefs.push_back(classref);
@@ -196,7 +197,7 @@ Class mull::objc::Runtime::registerOneClass(class64_t **classrefPtr,
     for (uint32_t i = 0; i < clzMethodListPtr->count; i++) {
       const method64_t *methodPtr = methods + i;
 
-      errs() << methodPtr->getDebugDescription();
+      errs() << "registerOneClass() adding instance method: " + methodPtr->getDebugDescription();
 
       IMP imp = (IMP)methodPtr->imp;
       BOOL added = class_addMethod(clz,

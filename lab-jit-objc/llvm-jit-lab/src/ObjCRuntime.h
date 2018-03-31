@@ -3,7 +3,8 @@
 
 #include "ObjCType.h"
 
-#include <objc/objc.h>
+//#include <objc/objc.h>
+#include <objc/runtime.h>
 
 #include <llvm/Support/raw_ostream.h>
 

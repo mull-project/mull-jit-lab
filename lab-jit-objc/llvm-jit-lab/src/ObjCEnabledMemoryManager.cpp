@@ -19,13 +19,13 @@ ObjCEnabledMemoryManager::allocateDataSection(uintptr_t Size,
                                                                SectionName,
                                                                isReadOnly);
 
-  if (SectionName.find("objc") != llvm::StringRef::npos) {
-    errs() << "MullMemoryManager::allocateDataSection(objc) -- "
-           << SectionName << " "
-           << "pointer: " << pointer << " "
-           << "size: " << Size
-           << "\n";
+  errs() << "MullMemoryManager::allocateDataSection(objc) -- "
+  << SectionName << " "
+  << "pointer: " << pointer << " "
+  << "size: " << Size
+  << "\n";
 
+  if (SectionName.find("objc") != llvm::StringRef::npos) {
     ObjectSectionEntry entry(pointer, Size, SectionName);
 
     objcSections.push_back(entry);
