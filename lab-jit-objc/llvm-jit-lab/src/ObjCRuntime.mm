@@ -191,7 +191,7 @@ Class mull::objc::Runtime::registerOneClass(class64_t **classrefPtr,
   /* INSTANCE METHODS */
   const method_list64_t *clzMethodListPtr = classref->getDataPointer()->getMethodListPtr();
   if (clzMethodListPtr) {
-    method64_t *methods = (method64_t *)clzMethodListPtr->getFirstMethodPointer();
+    const method64_t *methods = (const method64_t *)clzMethodListPtr->getFirstMethodPointer();
 
     for (uint32_t i = 0; i < clzMethodListPtr->count; i++) {
       const method64_t *methodPtr = methods + i;
@@ -202,7 +202,7 @@ Class mull::objc::Runtime::registerOneClass(class64_t **classrefPtr,
       BOOL added = class_addMethod(clz,
                                    sel_registerName(sel_getName(methodPtr->name)),
                                    (IMP)imp,
-                                   (char *)methodPtr->types);
+                                   (const char *)methodPtr->types);
       assert(added);
     }
   }
@@ -210,7 +210,7 @@ Class mull::objc::Runtime::registerOneClass(class64_t **classrefPtr,
   /* IVARS */
   const ivar_list64_t *clzIvarListPtr = classref->getDataPointer()->ivars;
   if (clzIvarListPtr) {
-    ivar64_t *ivars = (ivar64_t *)(clzIvarListPtr + 1);
+    const ivar64_t *ivars = (const ivar64_t *)(clzIvarListPtr + 1);
 
     for (uint32_t i = 0; i < clzIvarListPtr->count; i++) {
       const ivar64_t *ivar = ivars + i;
@@ -225,7 +225,7 @@ Class mull::objc::Runtime::registerOneClass(class64_t **classrefPtr,
   /* PROPERTIES */
   const objc_property_list64 *propertyListPtr = classref->getDataPointer()->baseProperties;
   if (propertyListPtr) {
-    objc_property64 *properties = (objc_property64 *)(propertyListPtr + 1);
+    const objc_property64 *properties = (const objc_property64 *)(propertyListPtr + 1);
 
     objc_property_attribute_t attributesBuf[10];
     memset(attributesBuf, 0, 10 * sizeof(objc_property_attribute_t));
@@ -269,7 +269,7 @@ Class mull::objc::Runtime::registerOneClass(class64_t **classrefPtr,
       class_addMethod(metaClz,
                       sel_registerName(sel_getName(methodPtr->name)),
                       imp,
-                      (char *)methodPtr->types);
+                      (const char *)methodPtr->types);
     }
   }
 

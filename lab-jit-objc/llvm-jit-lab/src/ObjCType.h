@@ -19,8 +19,8 @@ struct method_list64_t {
   uint32_t count;
   /* struct method64_t first;  These structures follow inline */
 
-  method64_t *getFirstMethodPointer() const {
-    return (method64_t *)(this + 1);
+  const method64_t *getFirstMethodPointer() const {
+    return (const method64_t *)(this + 1);
   }
 
   std::string getDebugDescription(int level = 0) const;
@@ -68,8 +68,8 @@ struct class_ro64_t {
     return (flags & 0x1) == 1;
   }
 
-  char *getName() const {
-    return (char *)name;
+  const char *getName() const {
+    return (const char *)name;
   }
 
   method_list64_t *getMethodListPtr() const {
