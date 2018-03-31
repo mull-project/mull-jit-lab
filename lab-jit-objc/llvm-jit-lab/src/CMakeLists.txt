@@ -1,9 +1,12 @@
 set(sources
+  ObjCResolver.cpp
   ObjCRuntime.mm
   ObjCRuntimeHelpers.mm
   ObjCEnabledMemoryManager.cpp
   ObjCType.mm
-  TestObjC.cpp
+  Tests/SandboxTest.cpp
+  Tests/ObjCTest.cpp
+  Tests/TestHelpers.cpp
 )
 
 # Globbing is not recommended by CMake so maybe consider listing headers
@@ -19,10 +22,7 @@ set(cs_link_flags "") # to be filled later
 set(cs_rpath "")      # to be filled later
 
 add_executable(llvm-jit-lab ${sources} ${headers})
-# add_executable(llvm-jit-lab ${sources} ${header_files})
-# set_source_files_properties(${header_dirs} PROPERTIES HEADER_FILE_ONLY ON)
-
-# include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}")
 
 target_link_libraries(llvm-jit-lab google-test)
 include_directories("${CMAKE_SOURCE_DIR}/googletest/include")
