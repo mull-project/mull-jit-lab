@@ -6,6 +6,7 @@ set(sources
   ObjCType.mm
   Tests/ObjCTest.cpp
   Tests/SandboxTest.cpp
+  Tests/XCTestObjCTest.cpp
   Tests/XCTestSwiftTest.cpp
   Tests/TestHelpers.cpp
 )
