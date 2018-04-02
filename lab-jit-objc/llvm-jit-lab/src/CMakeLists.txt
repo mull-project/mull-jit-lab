@@ -4,8 +4,10 @@ set(sources
   ObjCRuntimeHelpers.mm
   ObjCEnabledMemoryManager.cpp
   ObjCType.mm
-  Tests/SandboxTest.cpp
   Tests/ObjCTest.cpp
+  Tests/SandboxTest.cpp
+  Tests/XCTestObjCTest.cpp
+  Tests/XCTestSwiftTest.cpp
   Tests/TestHelpers.cpp
 )
 
