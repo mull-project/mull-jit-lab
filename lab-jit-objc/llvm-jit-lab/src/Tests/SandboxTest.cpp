@@ -16,9 +16,15 @@
 using namespace llvm;
 using namespace llvm::orc;
 
-static const char *const FixturesPath = "/opt/mull-jit-lab/lab-jit-objc/fixtures/bitcode";
+static const char *const FixturesPath = "/Users/Stanislaw/rootstanislaw/projects/Fuzzer";
 
-TEST(DISABLED_XCTest_ObjC, Test_001_Minimal) {
+static std::string getFixturePath(const char *const path) {
+  char fixturePath[255];
+  snprintf(fixturePath, sizeof(fixturePath), "%s/%s", FixturesPath, path);
+  return std::string(fixturePath);
+}
+
+TEST(Sandbox, Test001) {
   // These lines are needed for TargetMachine TM to be created correctly.
   llvm::InitializeNativeTarget();
   llvm::InitializeNativeTargetAsmPrinter();
@@ -38,10 +44,11 @@ TEST(DISABLED_XCTest_ObjC, Test_001_Minimal) {
 
   llvm::LLVMContext llvmContext;
 
-  char fixturePath[255];
-  snprintf(fixturePath, sizeof(fixturePath), "%s/%s", FixturesPath, "xctest_objc_001_minimal_xctestcase_run.bc");
+  std::string path_RunnerTests = getFixturePath("bitcode/FuzzerTests/Runner/RunnerTests.bc");
+  std::string path_Report = getFixturePath("bitcode/Fuzzer/Reports/FZRReport.bc");
 
-  auto objcModule = loadModuleAtPath(fixturePath, llvmContext);
+  auto module_runnerTests = loadModuleAtPath(path_RunnerTests, llvmContext);
+  auto module_report = loadModuleAtPath(path_Report, llvmContext);
 
   ObjectLinkingLayer<> ObjLayer;
 
@@ -56,10 +63,12 @@ TEST(DISABLED_XCTest_ObjC, Test_001_Minimal) {
 
   SimpleCompiler compiler(*TM);
 
-  auto objcCompiledModule = compiler(*objcModule);
+  auto compiledModule_runnerTests = compiler(*module_runnerTests);
+  auto compiledModule_report = compiler(*module_report);
 
   std::vector<object::ObjectFile*> objcSet;
-  objcSet.push_back(objcCompiledModule.getBinary());
+  objcSet.push_back(compiledModule_runnerTests.getBinary());
+  objcSet.push_back(compiledModule_report.getBinary());
 
   ObjCResolver objcResolver;
   auto objcHandle = ObjLayer.addObjectSet(std::move(objcSet),
