@@ -9,8 +9,6 @@ SWIFTC=swiftc
 # CC=/opt/llvm-5.0.0/bin/clang
 SYSROOT=-isysroot $(shell xcrun --sdk macosx --show-sdk-path)
 
-default: compile
-
 MACOS_FRAMEWORKS_DIR=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks
 # XCTEST_PATH=$(MACOS_FRAMEWORKS_DIR)/XCTest.framework/XCTest
 # XCTEST_FLAGS=-framework XCTest
@@ -23,7 +21,8 @@ FIXTURES_OUT_BC=$(FIXTURES_IN:%=$(OUTPUT_PATH)/%.bc)
 FIXTURES_OUT_LL=$(FIXTURES_IN:%=$(OUTPUT_PATH)/%.ll)
 FIXTURES_OUT_O=$(FIXTURES_IN:%=$(OUTPUT_PATH)/%.o)
 
-compile:
+compile: ## Compile MinimalSwiftXCTestCase.swift
+	mkdir -p $(OUTPUT_PATH)
 	swiftc \
           -emit-bc \
           -Onone \
