@@ -23,6 +23,7 @@ class Runtime {
   std::vector<class64_t *> metaclassRefs;
 
   std::vector<Class> runtimeClasses;
+  std::vector<std::pair<class64_t *, Class>> oldAndNewClassesMap;
 
   Class registerOneClass(class64_t **classrefPtr, Class superclass);
   void parsePropertyAttributes(const char *const attributesStr,
@@ -44,6 +45,8 @@ public:
                                            uintptr_t sectionSize);
 
   void registerClasses();
+
+  void fixupClassListReferences();
 };
 
 } }

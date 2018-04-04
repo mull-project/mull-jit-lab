@@ -33,7 +33,7 @@ TEST(XCTest_ObjC, Test_001_Minimal) {
     "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks/XCTest.framework/XCTest"
   ));
   assert(!sys::DynamicLibrary::LoadLibraryPermanently(
-    "/Users/Stanislaw/rootstanislaw/projects/CustomXCTestRunner/CustomXCTestRunner.dylib"
+    "/opt/CustomXCTestRunner/CustomXCTestRunner.dylib"
   ));
 
   llvm::LLVMContext llvmContext;
@@ -70,5 +70,7 @@ TEST(XCTest_ObjC, Test_001_Minimal) {
 
   void *runnerPtr = sys::DynamicLibrary::SearchForAddressOfSymbol("CustomXCTestRunnerRun");
   auto runnerFPtr = ((int (*)(void))runnerPtr);
-  runnerFPtr();
+  int result = runnerFPtr();
+
+  ASSERT_EQ(result, 0);
 }

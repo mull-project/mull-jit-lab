@@ -97,7 +97,7 @@ static void loadSwiftLibrariesOrExit() {
   }
 }
 
-TEST(DISABLED_XCTest_Swift, Test_001_Minimal) {
+TEST(XCTest_Swift, Test_001_Minimal) {
     // These lines are needed for TargetMachine TM to be created correctly.
   llvm::InitializeNativeTarget();
   llvm::InitializeNativeTargetAsmPrinter();
@@ -112,7 +112,7 @@ TEST(DISABLED_XCTest_Swift, Test_001_Minimal) {
     "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks/XCTest.framework/XCTest"
   ));
   assert(!sys::DynamicLibrary::LoadLibraryPermanently(
-    "/Users/Stanislaw/rootstanislaw/projects/CustomXCTestRunner/CustomXCTestRunner.dylib"
+    "/opt/CustomXCTestRunner/CustomXCTestRunner.dylib"
   ));
   loadSwiftLibrariesOrExit();
 
@@ -147,7 +147,10 @@ TEST(DISABLED_XCTest_Swift, Test_001_Minimal) {
                                           &objcResolver);
 
   ObjLayer.emitAndFinalize(objcHandle);
-//  void *runnerPtr = sys::DynamicLibrary::SearchForAddressOfSymbol("CustomXCTestRunnerRun");
-//  auto runnerFPtr = ((int (*)(void))runnerPtr);
-//  runnerFPtr();
+
+  void *runnerPtr = sys::DynamicLibrary::SearchForAddressOfSymbol("CustomXCTestRunnerRun");
+  auto runnerFPtr = ((int (*)(void))runnerPtr);
+  int result = runnerFPtr();
+  result = runnerFPtr();
+  ASSERT_EQ(result, 0);
 }

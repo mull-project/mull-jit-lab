@@ -166,7 +166,9 @@ void mull::objc::Runtime::registerClasses() {
     Class runtimeClass = registerOneClass(classrefPtr, superClz);
     runtimeClasses.push_back(runtimeClass);
 
-    errs() << classref->getDebugDescription() << "\n";
+    oldAndNewClassesMap.push_back(std::pair<class64_t *,Class>(classref, runtimeClass));
+
+//    errs() << classref->getDebugDescription() << "\n";
   }
 
   assert(classesToRegister.empty());
@@ -345,5 +347,13 @@ mull::objc::Runtime::parsePropertyAttributes(const char *const attributesStr,
   *count = attrFound;
 }
 
+  void Runtime::fixupClassListReferences() {
+    for (auto &pair: oldAndNewClassesMap) {
+      class64_t *classref = pair.first;
+      Class runtimeClass = pair.second;
+
+      *classref = *((class64_t *)runtimeClass);
+    }
+  }
 } }
 
