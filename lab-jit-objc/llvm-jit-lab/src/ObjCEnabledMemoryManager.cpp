@@ -73,4 +73,5 @@ void ObjCEnabledMemoryManager::registerObjC() {
     }
   }
 
+  runtime.fixupClassListReferences();
 }
