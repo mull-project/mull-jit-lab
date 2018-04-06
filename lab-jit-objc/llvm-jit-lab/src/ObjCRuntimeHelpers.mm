@@ -60,7 +60,10 @@ Class RuntimeHelpers::class_getClassByName(const char *name) {
 }
 
 void RuntimeHelpers::class_dumpMethods(Class clz) {
-  printf("class_dumpMethods() dumping class: %p\n", (void *)clz);
+  bool isMetaClass = class_isMetaClass(clz);
+  std::string clOrMetaclazz(isMetaClass ? "metaclass" : "class");
+
+  printf("class_dumpMethods() dumping %s: %p\n", clOrMetaclazz.c_str(), (void *)clz);
 
   unsigned int methodCount = 0;
   Method *methods = class_copyMethodList(clz, &methodCount);

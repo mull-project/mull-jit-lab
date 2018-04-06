@@ -30,6 +30,7 @@ compile: ## Compile MinimalSwiftXCTestCase.swift
           -o $(OUTPUT_PATH)/swift_001_minimal_xctestcase_run.bc \
 	  MinimalSwiftXCTestCase.swift
 	swiftc \
+          -emit-object \
           -Onone \
           -F/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks \
           -o $(OUTPUT_PATH)/swift_001_minimal_xctestcase_run.o \

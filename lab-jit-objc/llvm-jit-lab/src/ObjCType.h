@@ -3,6 +3,7 @@
 #include <objc/runtime.h>
 
 #include <string>
+#include <cassert>
 
 namespace mull { namespace objc {
 
@@ -17,10 +18,11 @@ struct method64_t {
 struct method_list64_t {
   uint32_t entsize;
   uint32_t count;
-  /* struct method64_t first;  These structures follow inline */
+  struct method64_t first; // These structures follow inline
 
   const method64_t *getFirstMethodPointer() const {
-    return (const method64_t *)(this + 1);
+    assert((&this->entsize + 2) == (void*)(&this->first));
+    return (const method64_t *)(&this->first);
   }
 
   std::string getDebugDescription(int level = 0) const;
@@ -79,6 +81,11 @@ struct class_ro64_t {
   std::string getDebugDescription(int level = 0) const;
 };
 
+enum Description {
+  Clazz = 0,
+  IsaOrSuperclass = 1
+};
+
 struct class64_t {
   class64_t *isa;        // class64_t * (64-bit pointer)
   class64_t *superclass; // class64_t * (64-bit pointer)
@@ -99,7 +106,7 @@ struct class64_t {
 //    return (class_ro64_t *)data;
   }
 
-  std::string getDebugDescription(int level = 0) const;
+  std::string getDebugDescription(Description = Clazz) const;
 };
 
 } } // namespace mull { namespace objc {

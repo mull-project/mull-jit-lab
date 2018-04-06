@@ -158,8 +158,10 @@ void mull::objc::Runtime::registerClasses() {
       }
     }
 
-    errs() << "registerClasses() " << "superclass is registered" << "\n";
-//    errs() << classref->getDebugDescription() << "\n";
+    errs() << "registerClasses() "
+           << "superclass is registered for class: " << classref->getDataPointer()->getName()
+           << "\n";
+    errs() << classref->getDebugDescription() << "\n";
 
     assert(superClz);
 
@@ -198,7 +200,7 @@ Class mull::objc::Runtime::registerOneClass(class64_t **classrefPtr,
     for (uint32_t i = 0; i < clzMethodListPtr->count; i++) {
       const method64_t *methodPtr = methods + i;
 
-      errs() << methodPtr->getDebugDescription();
+//      errs() << methodPtr->getDebugDescription();
 
       IMP imp = (IMP)methodPtr->imp;
       BOOL added = class_addMethod(clz,
@@ -220,7 +222,11 @@ Class mull::objc::Runtime::registerOneClass(class64_t **classrefPtr,
       // TODO: Can be dangerous: we are passing ivar->type which is something
       // like NSString instead of @encode(id) which is "@".
       // This is probably needed for runtime introspection.
-      class_addIvar(clz, ivar->name, ivar->size, log2(ivar->size), ivar->type);
+      bool success = class_addIvar(clz, ivar->name, ivar->size, log2(ivar->size), ivar->type);
+
+      assert(success);
+
+      errs() << "adding ivar: " << ivar->name << " / " << ivar->type << "\n";
     }
   }
 
@@ -324,7 +330,7 @@ mull::objc::Runtime::parsePropertyAttributes(const char *const attributesStr,
         break;
       }
 
-      case '&': case 'N': {
+      case '&': case 'N': case 'C': {
         objc_property_attribute_t tAttr;
 
         tAttr.name = stringStorage + storageIndex;
@@ -353,6 +359,7 @@ mull::objc::Runtime::parsePropertyAttributes(const char *const attributesStr,
       Class runtimeClass = pair.second;
 
       *classref = *((class64_t *)runtimeClass);
+//      memcpy(classref, runtimeClass, 40);
     }
   }
 } }
