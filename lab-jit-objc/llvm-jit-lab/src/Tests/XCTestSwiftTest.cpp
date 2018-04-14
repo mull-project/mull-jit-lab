@@ -189,6 +189,9 @@ TEST(XCTest_Swift, Test_001_Minimal) {
     "/opt/CustomXCTestRunner/CustomXCTestRunner.dylib"
   ));
   loadSwiftLibrariesOrExit();
+  assert(!sys::DynamicLibrary::LoadLibraryPermanently(
+    "/opt/SwiftTestCase.framework/SwiftTestCase"
+  ));
 
   llvm::LLVMContext llvmContext;
 
@@ -196,6 +199,11 @@ TEST(XCTest_Swift, Test_001_Minimal) {
   snprintf(fixturePath, sizeof(fixturePath), "%s/%s", FixturesPath, "swift_001_minimal_xctestcase_run.bc");
 
   auto objcModule = loadModuleAtPath(fixturePath, llvmContext);
+
+  char runnerBitcodeFixturePath[255];
+  snprintf(runnerBitcodeFixturePath,
+           sizeof(runnerBitcodeFixturePath), "%s/%s", "/opt/CustomXCTestRunner", "CustomXCTestRunner.bc");
+  auto runnerBitcodeModule = loadModuleAtPath(runnerBitcodeFixturePath, llvmContext);
 
   std::vector<llvm::Function *> staticCtors = getStaticConstructors(objcModule.get());
   errs() << "static constructors: " << staticCtors.size() << "\n";
@@ -218,12 +226,21 @@ TEST(XCTest_Swift, Test_001_Minimal) {
   SimpleCompiler compiler(*TM);
 
   auto objcCompiledModule = compiler(*objcModule);
+
   char objectFixturePath[255];
   snprintf(objectFixturePath, sizeof(fixturePath), "%s/%s", FixturesPath, "swift_001_minimal_xctestcase_run.o");
-
 //  auto objcCompiledModule = getObjectFromDisk(objectFixturePath);
+
+  char runnerFixturePath[255];
+  snprintf(runnerFixturePath,
+           sizeof(fixturePath),
+           "%s/%s", "/opt/CustomXCTestRunner", "CustomXCTestRunner.o");
+//  auto runnerCompiledModule = getObjectFromDisk(runnerFixturePath);
+//  auto runnerCompiledModule = compiler(*runnerBitcodeModule);
+
   std::vector<object::ObjectFile*> objcSet;
   objcSet.push_back(objcCompiledModule.getBinary());
+//  objcSet.push_back(runnerCompiledModule.getBinary());
 
   ObjCResolver objcResolver;
   auto objcHandle = ObjLayer.addObjectSet(std::move(objcSet),
@@ -231,6 +248,23 @@ TEST(XCTest_Swift, Test_001_Minimal) {
                                           &objcResolver);
 
   ObjLayer.emitAndFinalize(objcHandle);
+
+//  std::string functionName = "_CustomXCTestRunnerRun";
+//  errs() << "Running function: " << functionName << "\n";
+//  JITSymbol symbol = ObjLayer.findSymbol(functionName, false);
+//
+//  void *fpointer =
+//  reinterpret_cast<void *>(static_cast<uintptr_t>(symbol.getAddress()));
+//
+//  if (fpointer == nullptr) {
+//    errs() << "CustomTestRunner> Can't find pointer to function: "
+//    << functionName << "\n";
+//    exit(1);
+//  }
+//
+//  auto runnerFunction = ((int (*)(void))(intptr_t)fpointer);
+//
+//  int result = runnerFunction();
 
   void *runnerPtr = sys::DynamicLibrary::SearchForAddressOfSymbol("CustomXCTestRunnerRun");
   errs() << "runnerPtr: " << runnerPtr << "\n";

@@ -107,6 +107,18 @@ struct class64_t {
   }
 
   std::string getDebugDescription(Description = Clazz) const;
+  bool isFastDataMask() const {
+#define FAST_DATA_MASK          0x00007ffffffffff8UL
+
+    return (uintptr_t)data & FAST_DATA_MASK;
+  }
+
+  bool isSwift() const {
+    #define FAST_IS_SWIFT           (1UL<<0)
+
+    return (uintptr_t)data & FAST_IS_SWIFT;
+  }
+
 };
 
 } } // namespace mull { namespace objc {

@@ -2,6 +2,8 @@
 
 #include "ObjCRuntimeHelpers.h"
 
+#include <objc/message.h>
+
 namespace mull { namespace objc {
 
 mull::objc::Runtime::~Runtime() {
@@ -131,9 +133,12 @@ void mull::objc::Runtime::addClassesFromSuperclassRefsSection(void *sectionPtr,
       *classrefPtr = newClz;
     }
   }
+
+  errs() << "Runtime> addClassesFromSuperclassRefsSection DONE" << "\n";
 }
 
 #pragma mark - Private
+
 
 void mull::objc::Runtime::registerClasses() {
   while (classesToRegister.empty() == false) {
@@ -170,27 +175,133 @@ void mull::objc::Runtime::registerClasses() {
 
     oldAndNewClassesMap.push_back(std::pair<class64_t *,Class>(classref, runtimeClass));
 
-//    errs() << classref->getDebugDescription() << "\n";
+    errs() << classref->getDebugDescription() << "\n";
   }
 
   assert(classesToRegister.empty());
 }
+
+  struct here_class_rw_t {
+    // Be warned that Symbolication knows the layout of this structure.
+    uint32_t flags;
+    uint32_t version;
+
+    const class_ro64_t *ro;
+
+    //    method_array_t methods;
+    //    property_array_t properties;
+    //    protocol_array_t protocols;
+    //
+    //    Class firstSubclass;
+    //    Class nextSiblingClass;
+    //
+    //    char *demangledName;
+
+    //#if SUPPORT_INDEXED_ISA
+    //    uint32_t index;
+    //#endif
+  };
+  struct class_data_bits_t {
+
+    // Values are the FAST_ flags above.
+    uintptr_t bits;
+
+  public:
+
+    here_class_rw_t* data() {
+      return (here_class_rw_t *)(bits & FAST_DATA_MASK);
+    }
+
+    void setData(here_class_rw_t *newData)
+    {
+      //      assert(!data()  ||  (newData->flags & (RW_REALIZING | RW_FUTURE)));
+      // Set during realization or construction only. No locking needed.
+      // Use a store-release fence because there may be concurrent
+      // readers of data and data's contents.
+      uintptr_t newBits = (bits & ~FAST_DATA_MASK) | (uintptr_t)newData;
+      bits = newBits;
+    }
+
+    bool isSwift() {
+      return getBit(FAST_IS_SWIFT);
+    }
+    bool setSwift() {
+      setBits(FAST_IS_SWIFT);
+      return true;
+    }
+
+    bool getBit(uintptr_t bit)
+    {
+      return bits & bit;
+    }
+
+    void setBits(uintptr_t set)
+    {
+      bits = bits | set;
+    }
+
+  };
+
+#define RO_META               (1<<0)
+#define RW_REALIZED           (1<<31)
+
+  struct here_objc_class {
+    Class ISA;
+    Class superclass;
+    uintptr_t unused1;
+    uintptr_t unused2;
+    class_data_bits_t bits;    // class_rw_t * plus custom rr/alloc flags
+
+    here_class_rw_t *data() {
+      return bits.data();
+    }
+
+    void setData(here_class_rw_t *newData) {
+      bits.setData(newData);
+    }
+
+    bool isSwift() {
+      return bits.isSwift();
+    }
+    void setSwift() {
+      bits.setSwift();
+    }
+    bool isRealized() {
+      return data()->flags & RW_REALIZED;
+    }
+    bool isMetaClass() {
+      assert(this);
+      assert(isRealized());
+      return data()->ro->flags & RO_META;
+    }
+  };
+
 
 Class mull::objc::Runtime::registerOneClass(class64_t **classrefPtr,
                                             Class superclass) {
   class64_t *classref = *classrefPtr;
   class64_t *metaclassRef = classref->getIsaPointer();
 
+  assert(strlen(classref->getDataPointer()->name) > 0);
+  errs() << "registerOneClass: " << classref->getDataPointer()->name << "\n";
   classRefs.push_back(classref);
   metaclassRefs.push_back(metaclassRef);
 
   const method_list64_t *metaClzMethodListPtr =
     metaclassRef->getDataPointer()->getMethodListPtr();
 
+  here_objc_class *superClsLL = (here_objc_class *)superclass;
+  here_objc_class *oldClsLL = (here_objc_class *)classref;
+
   Class clz =
     objc_allocateClassPair(superclass,
                            classref->getDataPointer()->getName(),
                            0);
+  here_objc_class *newClsLL = (here_objc_class *)clz;
+
+  errs() << newClsLL->isSwift() << "\n";
+  errs() << oldClsLL->isSwift() << "\n";
+  errs() << superClsLL->isSwift() << "\n";
 
   /* INSTANCE METHODS */
   const method_list64_t *clzMethodListPtr = classref->getDataPointer()->getMethodListPtr();
@@ -201,8 +312,21 @@ Class mull::objc::Runtime::registerOneClass(class64_t **classrefPtr,
       const method64_t *methodPtr = methods + i;
 
 //      errs() << methodPtr->getDebugDescription();
+      errs() << "METHH: " << sel_getName(methodPtr->name) << "\n";
+
+
+      IMP dummyIMP = imp_implementationWithBlock(^(id self, id arg1, id arg2) {
+        printf("accessing imp of: %s\n", methodPtr->name);
+
+        abort();
+      });
 
       IMP imp = (IMP)methodPtr->imp;
+
+      if (strcmp("methodOfStan", sel_getName(methodPtr->name)) == 0) {
+        imp = (IMP)dummyIMP; //methodPtr->imp;
+      }
+
       BOOL added = class_addMethod(clz,
                                    sel_registerName(sel_getName(methodPtr->name)),
                                    (IMP)imp,
@@ -211,6 +335,7 @@ Class mull::objc::Runtime::registerOneClass(class64_t **classrefPtr,
     }
   }
 
+//  abort();
   /* IVARS */
   const ivar_list64_t *clzIvarListPtr = classref->getDataPointer()->ivars;
   if (clzIvarListPtr) {
@@ -254,6 +379,11 @@ Class mull::objc::Runtime::registerOneClass(class64_t **classrefPtr,
     }
   }
   objc_registerClassPair(clz);
+#define RW_CONSTRUCTED        (1<<25)
+
+  errs() << "ZER\n";
+
+//  objc_registerClassPair((Class)classref);
 
   /* CLASS REGISTRATION */
   Class metaClz = objc_getMetaClass(class_getName(clz));
@@ -273,6 +403,14 @@ Class mull::objc::Runtime::registerOneClass(class64_t **classrefPtr,
 
       errs() << methodPtr->getDebugDescription();
 
+      IMP initIMP = imp_implementationWithBlock(^(id self, id arg1, id arg2) {
+        printf("accessing imp of: %s\n", methodPtr->name);
+
+        abort();
+      });
+
+//      IMP imp = (IMP)initIMP; //methodPtr->imp;
+
       auto imp = (IMP)methodPtr->imp;
       class_addMethod(metaClz,
                       sel_registerName(sel_getName(methodPtr->name)),
@@ -283,6 +421,9 @@ Class mull::objc::Runtime::registerOneClass(class64_t **classrefPtr,
 
   Class registeredMetaClass = objc_getMetaClass(classref->getDataPointer()->getName());
   assert(metaClz == registeredMetaClass);
+
+//  objc_msgSend(registeredMetaClass, sel_registerName("load"));
+//  objc_msgSend(registeredMetaClass, sel_registerName("initialize"));
 
   RuntimeHelpers::class_dumpMethods(clz);
   RuntimeHelpers::class_dumpMethods(metaClz);
@@ -297,7 +438,8 @@ mull::objc::Runtime::parsePropertyAttributes(const char *const attributesStr,
                                              size_t *count) {
   size_t attrFound = 0;
 
-  char attributesCopy[32];
+  printf("parsePropertyAttributes attr string: %s\n", attributesStr);
+  char attributesCopy[128];
 
   strcpy(attributesCopy, attributesStr);
 
@@ -330,7 +472,7 @@ mull::objc::Runtime::parsePropertyAttributes(const char *const attributesStr,
         break;
       }
 
-      case '&': case 'N': case 'C': {
+      case '&': case 'N': case 'C': case 'R': {
         objc_property_attribute_t tAttr;
 
         tAttr.name = stringStorage + storageIndex;
@@ -356,10 +498,40 @@ mull::objc::Runtime::parsePropertyAttributes(const char *const attributesStr,
   void Runtime::fixupClassListReferences() {
     for (auto &pair: oldAndNewClassesMap) {
       class64_t *classref = pair.first;
+
+      errs() << "Is Swift: " << classref->isSwift() << "\n";
+      errs() << "Is Fast data mask: " << classref->isFastDataMask() << "\n";
+
       Class runtimeClass = pair.second;
 
+      class64_t *classRegisteredRef = (class64_t *)pair.second;
+      errs() << "Is Swift Registered: " << classRegisteredRef->isSwift() << "\n";
+      errs() << "Is Swift Registered fast data mask: " << classRegisteredRef->isFastDataMask() << "\n";
+
+//      ((class64_t *)runtimeClass)->getDataPointer()->flags |= (1UL<<0);
+//      ((class64_t *)runtimeClass)->getDataPointer()->flags |= 0x00007ffffffffff8UL;
+
+//      Class runtimeMetaClass = objc_getMetaClass(object_getClassName(runtimeClass));
+//
+//      here_objc_class *newClsLL = (here_objc_class *)runtimeClass;
+//      here_objc_class *oldClsLL = (here_objc_class *)classref;
+
       *classref = *((class64_t *)runtimeClass);
+//      classref->getDataPointer()->flags = oldData;
+//      classref->isa = ((class64_t *)runtimeClass)->isa;
 //      memcpy(classref, runtimeClass, 40);
+      errs() << "Is Swift: " << classref->isSwift() << "\n";
+      errs() << "Is Fast data mask: " << classref->isFastDataMask() << "\n";
+      errs() << "Is Swift Registered: " << classRegisteredRef->isSwift() << "\n";
+      errs() << "Is Swift Registered fast data mask: " << classRegisteredRef->isFastDataMask() << "\n";
+
+
+//      unsigned int outClasses = 0;
+//      Class  *runttimeClass = objc_copyClassList(&outClasses);
+
+
+
+      errs() << "FOOO";
     }
   }
 } }

@@ -27,12 +27,27 @@ compile: ## Compile MinimalSwiftXCTestCase.swift
           -emit-bc \
           -Onone \
           -F/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks \
+          -F/opt \
+          -framework SwiftTestCase \
+          -target x86_64-apple-macosx10.13 \
           -o $(OUTPUT_PATH)/swift_001_minimal_xctestcase_run.bc \
 	  MinimalSwiftXCTestCase.swift
 	swiftc \
           -emit-object \
           -Onone \
           -F/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks \
+          -F/opt \
+          -framework SwiftTestCase \
+          -target x86_64-apple-macosx10.13 \
+          -o $(OUTPUT_PATH)/swift_001_minimal_xctestcase_run.Onone.o \
+	  MinimalSwiftXCTestCase.swift
+	swiftc \
+          -emit-object \
+          -Onone \
+          -F/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks \
+          -F/opt \
+          -framework SwiftTestCase \
+          -target x86_64-apple-macosx10.13 \
           -o $(OUTPUT_PATH)/swift_001_minimal_xctestcase_run.o \
 	  MinimalSwiftXCTestCase.swift
 
