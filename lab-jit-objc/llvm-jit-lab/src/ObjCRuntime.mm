@@ -42,11 +42,13 @@ void mull::objc::Runtime::addClassesFromSection(void *sectionPtr,
   uint32_t count = sectionSize / 8;
   // 16 is "8 + alignment" (don't know yet what alignment is for).
   for (uintptr_t i = 0; i < count / 2; i += 1) {
-    class64_t *const clzPointer = classes[i];
+    class64_t **clzPointerRef = &classes[i];
+    class64_t *clzPointer = *clzPointerRef;
+
     errs() << "mull::objc::Runtime> adding class: "
            << clzPointer->getDataPointer()->getName() << "\n";
 
-    classesToRegister.push(&classes[i]);
+    classesToRegister.push(clzPointerRef);
   }
 }
 
@@ -173,7 +175,7 @@ void mull::objc::Runtime::registerClasses() {
     Class runtimeClass = registerOneClass(classrefPtr, superClz);
     runtimeClasses.push_back(runtimeClass);
 
-    oldAndNewClassesMap.push_back(std::pair<class64_t *,Class>(classref, runtimeClass));
+    oldAndNewClassesMap.push_back(std::pair<class64_t **, Class>(classrefPtr, runtimeClass));
 
     errs() << classref->getDebugDescription() << "\n";
   }
@@ -181,14 +183,19 @@ void mull::objc::Runtime::registerClasses() {
   assert(classesToRegister.empty());
 }
 
+//  struct method_array_t {
+//    uint32_t count;
+//    method64_t **lists;
+//  };
+
   struct here_class_rw_t {
     // Be warned that Symbolication knows the layout of this structure.
     uint32_t flags;
     uint32_t version;
 
-    const class_ro64_t *ro;
+    class_ro64_t *ro;
 
-    //    method_array_t methods;
+    method_array_t methods;
     //    property_array_t properties;
     //    protocol_array_t protocols;
     //
@@ -276,9 +283,12 @@ void mull::objc::Runtime::registerClasses() {
     }
   };
 
+  OBJC_EXPORT const uintptr_t objc_debug_isa_class_mask;
 
 Class mull::objc::Runtime::registerOneClass(class64_t **classrefPtr,
                                             Class superclass) {
+  assert(objc_debug_isa_class_mask == FAST_DATA_MASK);
+
   class64_t *classref = *classrefPtr;
   class64_t *metaclassRef = classref->getIsaPointer();
 
@@ -298,14 +308,31 @@ Class mull::objc::Runtime::registerOneClass(class64_t **classrefPtr,
                            classref->getDataPointer()->getName(),
                            0);
   here_objc_class *newClsLL = (here_objc_class *)clz;
+  newClsLL->data()->ro = classref->getDataPointer();
+  class_ro64_t *ro = newClsLL->data()->ro;
+  here_class_rw_t *data = newClsLL->data();
 
+  for (auto& meth : *((method_list_t *)ro->baseMethods)) {
+    const char *name = sel_getName(meth.name);
+    meth.name = sel_registerName(name);
+  }
+
+  data->methods.attachLists((method_list_t **)&ro->baseMethods, 1);
+
+//  data->methods.lists = (method64_t **)malloc(2 * sizeof(method64_t *));
+//  data->methods.lists[0] = (method64_t *)malloc(6 * sizeof(method64_t));
+//  data->methods.lists[1] = NULL;
+//  memcpy(data->methods.lists[0], &data->ro->baseMethods->first, 6 * sizeof(method64_t));
+//  data->methods.count = 1;
+  errs() << sizeof(data->methods) << "\n";
+//  abort();
   errs() << newClsLL->isSwift() << "\n";
   errs() << oldClsLL->isSwift() << "\n";
   errs() << superClsLL->isSwift() << "\n";
 
   /* INSTANCE METHODS */
   const method_list64_t *clzMethodListPtr = classref->getDataPointer()->getMethodListPtr();
-  if (clzMethodListPtr) {
+  if (NO && clzMethodListPtr) {
     const method64_t *methods = (const method64_t *)clzMethodListPtr->getFirstMethodPointer();
 
     for (uint32_t i = 0; i < clzMethodListPtr->count; i++) {
@@ -318,6 +345,7 @@ Class mull::objc::Runtime::registerOneClass(class64_t **classrefPtr,
       IMP dummyIMP = imp_implementationWithBlock(^(id self, id arg1, id arg2) {
         printf("accessing imp of: %s\n", methodPtr->name);
 
+//        exit(1);
         abort();
       });
 
@@ -497,7 +525,9 @@ mull::objc::Runtime::parsePropertyAttributes(const char *const attributesStr,
 
   void Runtime::fixupClassListReferences() {
     for (auto &pair: oldAndNewClassesMap) {
-      class64_t *classref = pair.first;
+      class64_t **classref_ref = pair.first;
+
+      class64_t *classref = *classref_ref;
 
       errs() << "Is Swift: " << classref->isSwift() << "\n";
       errs() << "Is Fast data mask: " << classref->isFastDataMask() << "\n";
@@ -516,7 +546,13 @@ mull::objc::Runtime::parsePropertyAttributes(const char *const attributesStr,
 //      here_objc_class *newClsLL = (here_objc_class *)runtimeClass;
 //      here_objc_class *oldClsLL = (here_objc_class *)classref;
 
-      *classref = *((class64_t *)runtimeClass);
+      *classref_ref = ((class64_t *)runtimeClass);
+
+      Class pointerr = (Class)*classref_ref;
+//      *classref = NULL; //*((class64_t *)runtimeClass);
+//      classref->isa = NULL;
+//      classref->data = NULL;
+//      classref->superclass = NULL;
 //      classref->getDataPointer()->flags = oldData;
 //      classref->isa = ((class64_t *)runtimeClass)->isa;
 //      memcpy(classref, runtimeClass, 40);
@@ -531,7 +567,7 @@ mull::objc::Runtime::parsePropertyAttributes(const char *const attributesStr,
 
 
 
-      errs() << "FOOO";
+      errs() << "FOOO" << "\n";
     }
   }
 } }

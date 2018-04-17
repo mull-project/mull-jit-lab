@@ -34,6 +34,7 @@ compile: ## Compile MinimalSwiftXCTestCase.swift
 	  MinimalSwiftXCTestCase.swift
 	swiftc \
           -emit-object \
+          -g \
           -Onone \
           -F/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks \
           -F/opt \
@@ -43,7 +44,8 @@ compile: ## Compile MinimalSwiftXCTestCase.swift
 	  MinimalSwiftXCTestCase.swift
 	swiftc \
           -emit-object \
-          -Onone \
+          -O \
+          -g \
           -F/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks \
           -F/opt \
           -framework SwiftTestCase \

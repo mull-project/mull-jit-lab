@@ -14,9 +14,12 @@
 #include <llvm/Object/ObjectFile.h>
 #include <llvm/Object/Binary.h>
 
+#include <objc/message.h>
+
 #include "ObjCResolver.h"
 #include "ObjCRuntime.h"
 #include "TestHelpers.h"
+#include "ObjCRuntimeHelpers.h"
 
 using namespace llvm;
 using namespace llvm::orc;
@@ -239,6 +242,14 @@ TEST(XCTest_Swift, Test_001_Minimal) {
 //  auto runnerCompiledModule = compiler(*runnerBitcodeModule);
 
   std::vector<object::ObjectFile*> objcSet;
+
+  std::string cacheName("/tmp/_objcmodule.o");
+  std::error_code EC;
+  raw_fd_ostream outfile(cacheName, EC, sys::fs::F_None);
+  outfile.write(objcCompiledModule.getBinary()->getMemoryBufferRef().getBufferStart(),
+                objcCompiledModule.getBinary()->getMemoryBufferRef().getBufferSize());
+  outfile.close();
+
   objcSet.push_back(objcCompiledModule.getBinary());
 //  objcSet.push_back(runnerCompiledModule.getBinary());
 
@@ -265,6 +276,24 @@ TEST(XCTest_Swift, Test_001_Minimal) {
 //  auto runnerFunction = ((int (*)(void))(intptr_t)fpointer);
 //
 //  int result = runnerFunction();
+
+
+  Class clllz = mull::objc::RuntimeHelpers::class_getClassByName("BinarySearchTest");
+  assert(clllz);
+  id instanCe =
+    objc_constructInstance(clllz, malloc(class_getInstanceSize(clllz)));
+  assert(instanCe);
+
+  uintptr_t *swift_isaMask = (uintptr_t *)sys::DynamicLibrary::SearchForAddressOfSymbol("swift_isaMask");
+//  assert((uintptr_t)swift_isaMask > 0);
+//  errs
+
+  assert(*swift_isaMask == FAST_DATA_MASK);
+
+//  objc_msgSend(instanCe, sel_registerName("methodOfStan"));
+//  objc_msgSend(instanCe, sel_registerName("setUp"));
+//  auto fptr = (int(*)(void))((uintptr_t)instanCe & FAST_DATA_MASK + 0x68);
+//  auto eboa = fptr();
 
   void *runnerPtr = sys::DynamicLibrary::SearchForAddressOfSymbol("CustomXCTestRunnerRun");
   errs() << "runnerPtr: " << runnerPtr << "\n";

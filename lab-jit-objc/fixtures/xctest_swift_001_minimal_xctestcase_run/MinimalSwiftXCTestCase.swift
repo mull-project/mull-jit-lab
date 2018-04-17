@@ -2,31 +2,26 @@ import XCTest
 import SwiftTestCase
 
 @objc(BinarySearchTest)
-class BinarySearchTest: SwiftTestCase {
-
-//  var _ivar_searchList: [Int]?
-//  var searchList: [Int]! {
-  //  get {
-      //print("searchList()> getter before reading")
-      //return _ivar_searchList
-    //}
-    //set {
-//      print("searchList()> setter before writing")
-
-  //    _ivar_searchList = newValue
-//    }
-//  }
-
-  func methodOfStan() {
+public class BinarySearchTest: SwiftTestCase {
+  @objc open func methodOfStan() {
     print("methodOfStan()>")
+    //raise(SIGINT)
   }
 
-  override func setUp() {
+  @objc override open func setUp() {
+    //print("setUp() before calling super")
+
+    //super.setUp()
+
+    //print("setUp() before calling methodOfStan")
+    //raise(SIGINT)
+
     methodOfStan()
+
+    //print("setUp() after calling methodOfStan")
   }
 
-  func testFooBarWip() 
-  {
-
+  @objc func testFooBarWip() {
+    XCTAssert(true)
   }
 }
