@@ -2,8 +2,10 @@
 
 #include <gtest/gtest.h>
 
+#include <llvm/ExecutionEngine/ExecutionEngine.h>
 #include <llvm/ExecutionEngine/Orc/CompileUtils.h>
-#include <llvm/ExecutionEngine/Orc/ObjectLinkingLayer.h>
+#include <llvm/ExecutionEngine/Orc/RTDyldObjectLinkingLayer.h>
+
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Value.h>
 #include <llvm/IR/Constants.h>
@@ -20,6 +22,8 @@
 #include "ObjCRuntime.h"
 #include "TestHelpers.h"
 #include "ObjCRuntimeHelpers.h"
+
+#include <memory>
 
 using namespace llvm;
 using namespace llvm::orc;
@@ -174,6 +178,20 @@ static void loadSwiftLibrariesOrExit() {
   }
 }
 
+
+class JITSetup {
+
+public:
+  static
+  llvm::orc::RTDyldObjectLinkingLayer::MemoryManagerGetter getMemoryManager() {
+    llvm::orc::RTDyldObjectLinkingLayer::MemoryManagerGetter GetMemMgr =
+    []() {
+      return std::make_shared<ObjCEnabledMemoryManager>();
+    };
+    return GetMemMgr;
+  }
+};
+
 TEST(XCTest_Swift, Test_001_Minimal) {
     // These lines are needed for TargetMachine TM to be created correctly.
   llvm::InitializeNativeTarget();
@@ -202,11 +220,13 @@ TEST(XCTest_Swift, Test_001_Minimal) {
   snprintf(fixturePath, sizeof(fixturePath), "%s/%s", FixturesPath, "swift_001_minimal_xctestcase_run.bc");
 
   auto objcModule = loadModuleAtPath(fixturePath, llvmContext);
+  assert(objcModule);
 
   char runnerBitcodeFixturePath[255];
   snprintf(runnerBitcodeFixturePath,
            sizeof(runnerBitcodeFixturePath), "%s/%s", "/opt/CustomXCTestRunner", "CustomXCTestRunner.bc");
   auto runnerBitcodeModule = loadModuleAtPath(runnerBitcodeFixturePath, llvmContext);
+  assert(runnerBitcodeModule);
 
   std::vector<llvm::Function *> staticCtors = getStaticConstructors(objcModule.get());
   errs() << "static constructors: " << staticCtors.size() << "\n";
@@ -215,7 +235,7 @@ TEST(XCTest_Swift, Test_001_Minimal) {
   }
 
 //  exit(1);
-  ObjectLinkingLayer<> ObjLayer;
+  RTDyldObjectLinkingLayer objectLayer(JITSetup::getMemoryManager());
 
   std::unique_ptr<TargetMachine> TM(
     EngineBuilder().selectTarget(llvm::Triple(),
@@ -228,7 +248,19 @@ TEST(XCTest_Swift, Test_001_Minimal) {
 
   SimpleCompiler compiler(*TM);
 
-  auto objcCompiledModule = compiler(*objcModule);
+  std::shared_ptr<ObjCResolver> objcResolver = std::make_shared<ObjCResolver>();
+
+  RTDyldObjectLinkingLayer::ObjectPtr objcCompiledModule =
+    std::make_shared<object::OwningBinary<object::ObjectFile>>(compiler(*objcModule));
+  assert(objcCompiledModule);
+  assert(objcCompiledModule->getBinary());
+  assert(objcCompiledModule->getBinary()->isMachO());
+  std::vector<object::ObjectFile*> objcSet;
+  auto objcHandle = objectLayer.addObject(objcCompiledModule, objcResolver).get();
+  assert(objcHandle->get());
+//  auto objcCompiledModule = compiler(*objcModule);
+
+  Error err = objectLayer.emitAndFinalize(objcHandle);
 
   char objectFixturePath[255];
   snprintf(objectFixturePath, sizeof(fixturePath), "%s/%s", FixturesPath, "swift_001_minimal_xctestcase_run.o");
@@ -241,24 +273,24 @@ TEST(XCTest_Swift, Test_001_Minimal) {
 //  auto runnerCompiledModule = getObjectFromDisk(runnerFixturePath);
 //  auto runnerCompiledModule = compiler(*runnerBitcodeModule);
 
-  std::vector<object::ObjectFile*> objcSet;
+//  std::vector<object::ObjectFile*> objcSet;
 
   std::string cacheName("/tmp/_objcmodule.o");
   std::error_code EC;
   raw_fd_ostream outfile(cacheName, EC, sys::fs::F_None);
-  outfile.write(objcCompiledModule.getBinary()->getMemoryBufferRef().getBufferStart(),
-                objcCompiledModule.getBinary()->getMemoryBufferRef().getBufferSize());
+  outfile.write(objcCompiledModule->getBinary()->getMemoryBufferRef().getBufferStart(),
+                objcCompiledModule->getBinary()->getMemoryBufferRef().getBufferSize());
   outfile.close();
 
-  objcSet.push_back(objcCompiledModule.getBinary());
+//  objcSet.push_back(objcCompiledModule->getBinary());
 //  objcSet.push_back(runnerCompiledModule.getBinary());
 
-  ObjCResolver objcResolver;
-  auto objcHandle = ObjLayer.addObjectSet(std::move(objcSet),
-                                          make_unique<ObjCEnabledMemoryManager>(),
-                                          &objcResolver);
+//  ObjCResolver objcResolver;
+//  auto objcHandle = ObjLayer.addObjectSet(std::move(objcSet),
+//                                          make_unique<ObjCEnabledMemoryManager>(),
+//                                          &objcResolver);
 
-  ObjLayer.emitAndFinalize(objcHandle);
+//  ObjLayer.emitAndFinalize(objcHandle);
 
 //  std::string functionName = "_CustomXCTestRunnerRun";
 //  errs() << "Running function: " << functionName << "\n";
@@ -278,11 +310,17 @@ TEST(XCTest_Swift, Test_001_Minimal) {
 //  int result = runnerFunction();
 
 
-  Class clllz = mull::objc::RuntimeHelpers::class_getClassByName("BinarySearchTest");
-  assert(clllz);
-  id instanCe =
-    objc_constructInstance(clllz, malloc(class_getInstanceSize(clllz)));
-  assert(instanCe);
+  Class correctBSTClazz = objc_getClass("BinarySearchTestCorrect");
+  assert(correctBSTClazz);
+  id correctBSTClazzInstance =
+    objc_constructInstance(correctBSTClazz, malloc(class_getInstanceSize(correctBSTClazz)));
+  assert(correctBSTClazzInstance);
+
+  Class wrongBSTClazz = objc_getClass("BinarySearchTestWrong");
+  assert(wrongBSTClazz);
+  id wrongInstance =
+    objc_constructInstance(wrongBSTClazz, malloc(class_getInstanceSize(wrongBSTClazz)));
+  assert(wrongInstance);
 
   uintptr_t *swift_isaMask = (uintptr_t *)sys::DynamicLibrary::SearchForAddressOfSymbol("swift_isaMask");
 //  assert((uintptr_t)swift_isaMask > 0);
@@ -290,10 +328,50 @@ TEST(XCTest_Swift, Test_001_Minimal) {
 
   assert(*swift_isaMask == FAST_DATA_MASK);
 
-//  objc_msgSend(instanCe, sel_registerName("methodOfStan"));
-//  objc_msgSend(instanCe, sel_registerName("setUp"));
-//  auto fptr = (int(*)(void))((uintptr_t)instanCe & FAST_DATA_MASK + 0x68);
-//  auto eboa = fptr();
+  here_objc_class *correctBSTOBJCClazz = (here_objc_class *)correctBSTClazz;
+  here_objc_class *wrongBSTOBJCClazz = (here_objc_class *)wrongBSTClazz;
+
+//  wrongBSTOBJCClazz->bits.bits = correctBSTOBJCClazz->bits.bits;
+//  assert(correctBSTOBJCClazz->bits.bits == wrongBSTOBJCClazz->bits.bits);
+
+#define FAST_REQUIRES_RAW_ISA   (1UL<<2)
+  assert(FAST_IS_SWIFT == (1UL<<0));
+  assert(FAST_DATA_MASK == 0x00007ffffffffff8UL);
+  assert(FAST_REQUIRES_RAW_ISA == (1UL<<2));
+#define FAST_HAS_DEFAULT_RR     (1UL<<1)
+#define RW_HAS_DEFAULT_AWZ    (1<<16)
+#define RO_HAS_CXX_STRUCTORS  (1<<2)
+#define RO_IS_ARC             (1<<7)
+
+  assert(correctBSTOBJCClazz->bits.bits & FAST_IS_SWIFT);
+  assert(wrongBSTOBJCClazz->bits.bits & FAST_IS_SWIFT);
+
+  assert(correctBSTOBJCClazz->bits.bits & FAST_DATA_MASK);
+  assert(wrongBSTOBJCClazz->bits.bits & FAST_DATA_MASK);
+
+  assert((correctBSTOBJCClazz->bits.bits & FAST_HAS_DEFAULT_RR) == 0);
+  assert((wrongBSTOBJCClazz->bits.bits & FAST_HAS_DEFAULT_RR) == 0);
+
+  assert((correctBSTOBJCClazz->bits.bits & RW_HAS_DEFAULT_AWZ) == 0);
+  assert((wrongBSTOBJCClazz->bits.bits & RW_HAS_DEFAULT_AWZ) == 0);
+
+  assert((correctBSTOBJCClazz->bits.bits & FAST_REQUIRES_RAW_ISA) == 0);
+  assert((wrongBSTOBJCClazz->bits.bits & FAST_REQUIRES_RAW_ISA) == 0);
+
+  assert((correctBSTOBJCClazz->bits.bits & RO_HAS_CXX_STRUCTORS) == 0);
+  assert((wrongBSTOBJCClazz->bits.bits & RO_HAS_CXX_STRUCTORS) == 0);
+
+  errs() << "Calling correct class: " << "\n";
+  objc_msgSend(correctBSTClazzInstance, sel_registerName("setUp"));
+  errs() << "Calling wrong class: " << "\n";
+
+//  void *pointer = (void *)((((uintptr_t)correctBSTClazzInstance) & *swift_isaMask) + 0x68);
+//  void (*funcPtr)(void *, SEL) = (void (*)(void *, SEL))pointer;
+//  funcPtr(correctBSTClazzInstance, sel_registerName("setUp"));
+
+  
+  objc_msgSend(wrongInstance, sel_registerName("setUp"));
+  objc_msgSend(wrongInstance, sel_registerName("setUp"));
 
   void *runnerPtr = sys::DynamicLibrary::SearchForAddressOfSymbol("CustomXCTestRunnerRun");
   errs() << "runnerPtr: " << runnerPtr << "\n";

@@ -1,10 +1,10 @@
 import XCTest
 import SwiftTestCase
 
-@objc(BinarySearchTest)
-public class BinarySearchTest: SwiftTestCase {
-  @objc open func methodOfStan() {
-    print("methodOfStan()>")
+@objc(BinarySearchTestWrong)
+public class BinarySearchTestWrong: SwiftTestCase {
+  @objc open func methodOfStanWrong() {
+    print("methodOfStanWrong()>")
     //raise(SIGINT)
   }
 
@@ -13,15 +13,17 @@ public class BinarySearchTest: SwiftTestCase {
 
     //super.setUp()
 
-    //print("setUp() before calling methodOfStan")
+    //print("setUp() before calling methodOfStanWrong")
     //raise(SIGINT)
 
-    methodOfStan()
-
-    //print("setUp() after calling methodOfStan")
+    methodOfStanWrong()
+    methodOfStanWrong()
+    //print("setUp() after calling methodOfStanWrong")
   }
 
   @objc func testFooBarWip() {
+    print("testFooBarWip()")
+
     XCTAssert(true)
   }
 }

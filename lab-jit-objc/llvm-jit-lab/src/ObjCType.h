@@ -20,6 +20,15 @@ struct method64_t {
   const char *types; /* const char * (64-bit pointer) */
   uint64_t imp;   /* IMP (64-bit pointer) */
 
+  struct SortBySELAddress :
+  public std::binary_function<const method64_t&,
+  const method64_t&, bool>
+  {
+    bool operator() (const method64_t& lhs,
+                     const method64_t& rhs)
+    { return lhs.name < rhs.name; }
+  };
+
   std::string getDebugDescription(int level = 0) const;
 };
 
@@ -248,7 +257,12 @@ struct entsize_list_tt {
 // Two bits of entsize are used for fixup markers.
 struct method_list_t : entsize_list_tt<mull::objc::method64_t, method_list_t, 0x3> {
   bool isFixedUp() const;
-  void setFixedUp();
+  void setFixedUp() {
+    static uint32_t fixed_up_method_list = 3;
+
+//    assert(!isFixedUp());
+    entsizeAndFlags = entsize() | fixed_up_method_list;
+  }
 
   uint32_t indexOfMethod(const mull::objc::method64_t *meth) const {
     uint32_t i =
@@ -481,3 +495,117 @@ public:
     return Super::duplicate<method_array_t>();
   }
 };
+
+//  struct method_array_t {
+//    uint32_t count;
+//    method64_t **lists;
+//  };
+
+struct here_class_rw_t {
+  // Be warned that Symbolication knows the layout of this structure.
+  uint32_t flags;
+  uint32_t version;
+
+  mull::objc::class_ro64_t *ro;
+
+  method_array_t methods;
+  //    property_array_t properties;
+  //    protocol_array_t protocols;
+  //
+  //    Class firstSubclass;
+  //    Class nextSiblingClass;
+  //
+  //    char *demangledName;
+
+  //#if SUPPORT_INDEXED_ISA
+  //    uint32_t index;
+  //#endif
+};
+struct class_data_bits_t {
+
+  // Values are the FAST_ flags above.
+  uintptr_t bits;
+
+public:
+
+  here_class_rw_t* data() {
+    return (here_class_rw_t *)(bits & FAST_DATA_MASK);
+  }
+
+  void setData(here_class_rw_t *newData)
+  {
+    //      assert(!data()  ||  (newData->flags & (RW_REALIZING | RW_FUTURE)));
+    // Set during realization or construction only. No locking needed.
+    // Use a store-release fence because there may be concurrent
+    // readers of data and data's contents.
+    uintptr_t newBits = (bits & ~FAST_DATA_MASK) | (uintptr_t)newData;
+    bits = newBits;
+  }
+
+  bool isSwift() {
+    return getBit(FAST_IS_SWIFT);
+  }
+  bool setSwift() {
+    setBits(FAST_IS_SWIFT);
+    return true;
+  }
+
+  bool getBit(uintptr_t bit)
+  {
+    return bits & bit;
+  }
+
+  void setBits(uintptr_t set)
+  {
+    bits = bits | set;
+  }
+
+};
+
+#define RO_META               (1<<0)
+#define RW_REALIZED           (1<<31)
+
+struct here_objc_class {
+  Class ISA;
+  Class superclass;
+  uintptr_t unused1;
+  uintptr_t unused2;
+  class_data_bits_t bits;    // class_rw_t * plus custom rr/alloc flags
+
+  void setInstanceSize(uint32_t newSize) {
+    assert(isRealized());
+    if (newSize != data()->ro->instanceSize) {
+
+#define RW_COPIED_RO          (1<<27)
+
+      assert(data()->flags & RW_COPIED_RO);
+      *const_cast<uint32_t *>(&data()->ro->instanceSize) = newSize;
+    }
+//    bits.setFastInstanceSize(newSize);
+  }
+
+  here_class_rw_t *data() {
+    return bits.data();
+  }
+
+  void setData(here_class_rw_t *newData) {
+    bits.setData(newData);
+  }
+
+  bool isSwift() {
+    return bits.isSwift();
+  }
+  void setSwift() {
+    bits.setSwift();
+  }
+  bool isRealized() {
+    return data()->flags & RW_REALIZED;
+  }
+  bool isMetaClass() {
+    assert(this);
+    assert(isRealized());
+    return data()->ro->flags & RO_META;
+  }
+};
+
+OBJC_EXPORT const uintptr_t objc_debug_isa_class_mask;

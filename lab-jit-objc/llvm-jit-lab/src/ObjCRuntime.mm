@@ -183,108 +183,6 @@ void mull::objc::Runtime::registerClasses() {
   assert(classesToRegister.empty());
 }
 
-//  struct method_array_t {
-//    uint32_t count;
-//    method64_t **lists;
-//  };
-
-  struct here_class_rw_t {
-    // Be warned that Symbolication knows the layout of this structure.
-    uint32_t flags;
-    uint32_t version;
-
-    class_ro64_t *ro;
-
-    method_array_t methods;
-    //    property_array_t properties;
-    //    protocol_array_t protocols;
-    //
-    //    Class firstSubclass;
-    //    Class nextSiblingClass;
-    //
-    //    char *demangledName;
-
-    //#if SUPPORT_INDEXED_ISA
-    //    uint32_t index;
-    //#endif
-  };
-  struct class_data_bits_t {
-
-    // Values are the FAST_ flags above.
-    uintptr_t bits;
-
-  public:
-
-    here_class_rw_t* data() {
-      return (here_class_rw_t *)(bits & FAST_DATA_MASK);
-    }
-
-    void setData(here_class_rw_t *newData)
-    {
-      //      assert(!data()  ||  (newData->flags & (RW_REALIZING | RW_FUTURE)));
-      // Set during realization or construction only. No locking needed.
-      // Use a store-release fence because there may be concurrent
-      // readers of data and data's contents.
-      uintptr_t newBits = (bits & ~FAST_DATA_MASK) | (uintptr_t)newData;
-      bits = newBits;
-    }
-
-    bool isSwift() {
-      return getBit(FAST_IS_SWIFT);
-    }
-    bool setSwift() {
-      setBits(FAST_IS_SWIFT);
-      return true;
-    }
-
-    bool getBit(uintptr_t bit)
-    {
-      return bits & bit;
-    }
-
-    void setBits(uintptr_t set)
-    {
-      bits = bits | set;
-    }
-
-  };
-
-#define RO_META               (1<<0)
-#define RW_REALIZED           (1<<31)
-
-  struct here_objc_class {
-    Class ISA;
-    Class superclass;
-    uintptr_t unused1;
-    uintptr_t unused2;
-    class_data_bits_t bits;    // class_rw_t * plus custom rr/alloc flags
-
-    here_class_rw_t *data() {
-      return bits.data();
-    }
-
-    void setData(here_class_rw_t *newData) {
-      bits.setData(newData);
-    }
-
-    bool isSwift() {
-      return bits.isSwift();
-    }
-    void setSwift() {
-      bits.setSwift();
-    }
-    bool isRealized() {
-      return data()->flags & RW_REALIZED;
-    }
-    bool isMetaClass() {
-      assert(this);
-      assert(isRealized());
-      return data()->ro->flags & RO_META;
-    }
-  };
-
-  OBJC_EXPORT const uintptr_t objc_debug_isa_class_mask;
-
 Class mull::objc::Runtime::registerOneClass(class64_t **classrefPtr,
                                             Class superclass) {
   assert(objc_debug_isa_class_mask == FAST_DATA_MASK);
@@ -307,32 +205,33 @@ Class mull::objc::Runtime::registerOneClass(class64_t **classrefPtr,
     objc_allocateClassPair(superclass,
                            classref->getDataPointer()->getName(),
                            0);
-  here_objc_class *newClsLL = (here_objc_class *)clz;
-  newClsLL->data()->ro = classref->getDataPointer();
-  class_ro64_t *ro = newClsLL->data()->ro;
-  here_class_rw_t *data = newClsLL->data();
 
-  for (auto& meth : *((method_list_t *)ro->baseMethods)) {
+  /*
+  here_objc_class *newClsLL = (here_objc_class *)clz;
+  newClsLL->data()->ro = (class_ro64_t *)oldClsLL->data();
+  here_class_rw_t *data = newClsLL->data();
+  class_ro64_t *ro = newClsLL->data()->ro;
+  newClsLL->setInstanceSize(ro->instanceSize);
+
+  method_list_t *mList = (method_list_t *)ro->baseMethods;
+  for (auto& meth : *mList) {
     const char *name = sel_getName(meth.name);
     meth.name = sel_registerName(name);
   }
+  method64_t::SortBySELAddress sorter;
+  std::stable_sort(mList->begin(), mList->end(), sorter);
 
+  mList->setFixedUp();
   data->methods.attachLists((method_list_t **)&ro->baseMethods, 1);
 
-//  data->methods.lists = (method64_t **)malloc(2 * sizeof(method64_t *));
-//  data->methods.lists[0] = (method64_t *)malloc(6 * sizeof(method64_t));
-//  data->methods.lists[1] = NULL;
-//  memcpy(data->methods.lists[0], &data->ro->baseMethods->first, 6 * sizeof(method64_t));
-//  data->methods.count = 1;
-  errs() << sizeof(data->methods) << "\n";
-//  abort();
-  errs() << newClsLL->isSwift() << "\n";
-  errs() << oldClsLL->isSwift() << "\n";
-  errs() << superClsLL->isSwift() << "\n";
+  assert(newClsLL->isSwift());
+  assert(oldClsLL->isSwift());
+  assert(superClsLL->isSwift());
+*/
 
   /* INSTANCE METHODS */
   const method_list64_t *clzMethodListPtr = classref->getDataPointer()->getMethodListPtr();
-  if (NO && clzMethodListPtr) {
+  if (clzMethodListPtr) {
     const method64_t *methods = (const method64_t *)clzMethodListPtr->getFirstMethodPointer();
 
     for (uint32_t i = 0; i < clzMethodListPtr->count; i++) {
@@ -344,7 +243,7 @@ Class mull::objc::Runtime::registerOneClass(class64_t **classrefPtr,
 
       IMP dummyIMP = imp_implementationWithBlock(^(id self, id arg1, id arg2) {
         printf("accessing imp of: %s\n", methodPtr->name);
-
+        fflush(stdout);
 //        exit(1);
         abort();
       });

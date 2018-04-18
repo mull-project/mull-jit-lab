@@ -4,8 +4,7 @@
 help: ## Show this help message.
 	@grep -E '^[0-9a-zA-Z_\.-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
-CC=/opt/llvm-3.9/bin/clang
-SWIFTC=swiftc
+SWIFTCC=/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swift
 # CC=/opt/llvm-5.0.0/bin/clang
 SYSROOT=-isysroot $(shell xcrun --sdk macosx --show-sdk-path)
 
@@ -23,8 +22,11 @@ FIXTURES_OUT_O=$(FIXTURES_IN:%=$(OUTPUT_PATH)/%.o)
 
 compile: ## Compile MinimalSwiftXCTestCase.swift
 	mkdir -p $(OUTPUT_PATH)
-	swiftc \
+	$(SWIFTCC) \
+		  -frontend \
+		  -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.13.sdk \
           -emit-bc \
+          -enable-objc-interop \
           -Onone \
           -F/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks \
           -F/opt \
@@ -32,8 +34,25 @@ compile: ## Compile MinimalSwiftXCTestCase.swift
           -target x86_64-apple-macosx10.13 \
           -o $(OUTPUT_PATH)/swift_001_minimal_xctestcase_run.bc \
 	  MinimalSwiftXCTestCase.swift
-	swiftc \
+
+	$(SWIFTCC) \
+		  -frontend \
+          -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.13.sdk \
+          -emit-ir \
+          -enable-objc-interop \
+          -Onone \
+          -F/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks \
+          -F/opt \
+          -framework SwiftTestCase \
+          -target x86_64-apple-macosx10.13 \
+          -o $(OUTPUT_PATH)/swift_001_minimal_xctestcase_run.ll \
+	  MinimalSwiftXCTestCase.swift
+	
+	$(SWIFTCC) \
+          -frontend \
+          -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.13.sdk \
           -emit-object \
+          -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.13.sdk \
           -g \
           -Onone \
           -F/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks \
@@ -42,7 +61,10 @@ compile: ## Compile MinimalSwiftXCTestCase.swift
           -target x86_64-apple-macosx10.13 \
           -o $(OUTPUT_PATH)/swift_001_minimal_xctestcase_run.Onone.o \
 	  MinimalSwiftXCTestCase.swift
-	swiftc \
+
+	$(SWIFTCC) \
+          -frontend \
+          -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.13.sdk \
           -emit-object \
           -O \
           -g \
