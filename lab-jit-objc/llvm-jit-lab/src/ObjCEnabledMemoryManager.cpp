@@ -19,6 +19,10 @@ ObjCEnabledMemoryManager::allocateDataSection(uintptr_t Size,
                                                                SectionName,
                                                                isReadOnly);
 
+  int numRegisteredClasses = objc_getClassList(NULL, 0);
+  assert(numRegisteredClasses > 0);
+  errs() << "OBJC CREATED CLASSES constr: " << numRegisteredClasses << "\n";
+
   if (SectionName.find("objc") != llvm::StringRef::npos) {
     errs() << "MullMemoryManager::allocateDataSection(objc) -- "
            << SectionName << " "
@@ -36,6 +40,17 @@ ObjCEnabledMemoryManager::allocateDataSection(uintptr_t Size,
 
 bool ObjCEnabledMemoryManager::finalizeMemory(std::string *ErrMsg) {
   registerObjC();
+
+  int numRegisteredClasses = objc_getClassList(NULL, 0);
+  assert(numRegisteredClasses > 0);
+
+  Class *buffer = (Class *)malloc(sizeof(Class) * numRegisteredClasses);
+  objc_getClassList(buffer, numRegisteredClasses);
+
+  errs() << "OBJC CREATED CLASSES finalizeMemory: " << numRegisteredClasses << "\n";
+  for (int i = 0; i < numRegisteredClasses; i++) {
+//    errs() << "created class: " << class_getName(buffer[i]) << "\n";
+  }
 
   bool success = SectionMemoryManager::finalizeMemory(ErrMsg);
 

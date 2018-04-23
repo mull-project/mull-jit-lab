@@ -1,65 +1,84 @@
+//#include "ObjCEnabledMemoryManager.h"
+
 #include "ObjCEnabledMemoryManager.h"
-
-#include <gtest/gtest.h>
-
-#include <llvm/ExecutionEngine/Orc/CompileUtils.h>
-#include <llvm/ExecutionEngine/Orc/ObjectLinkingLayer.h>
-#include <llvm/IR/LLVMContext.h>
-#include <llvm/Support/DynamicLibrary.h>
-#include <llvm/Support/raw_ostream.h>
-#include <llvm/Support/TargetSelect.h>
-
 #include "ObjCResolver.h"
 #include "ObjCRuntime.h"
 #include "TestHelpers.h"
+#include "ObjCRuntimeHelpers.h"
+
+#include <objc/message.h>
+#include <gtest/gtest.h>
+
+#include <llvm/ExecutionEngine/ExecutionEngine.h>
+#include <llvm/ExecutionEngine/Orc/CompileUtils.h>
+#include <llvm/ExecutionEngine/Orc/RTDyldObjectLinkingLayer.h>
+#include <llvm/IR/LLVMContext.h>
+#include <llvm/IR/Instructions.h>
+#include <llvm/IR/CallSite.h>
+#include <llvm/Support/DynamicLibrary.h>
+#include <llvm/Support/raw_ostream.h>
+#include <llvm/Support/TargetSelect.h>
 
 using namespace llvm;
 using namespace llvm::orc;
 
 static const char *const FixturesPath = "/opt/mull-jit-lab/lab-jit-objc/fixtures/bitcode";
 
+class JITSetup {
+public:
+  static
+  llvm::orc::RTDyldObjectLinkingLayer::MemoryManagerGetter getMemoryManager() {
+    llvm::orc::RTDyldObjectLinkingLayer::MemoryManagerGetter GetMemMgr =
+    []() {
+      return std::make_shared<ObjCEnabledMemoryManager>();
+    };
+    return GetMemMgr;
+  }
+};
+
+
 namespace SwiftDyLibPath {
   static const char *const Core =
-  "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftCore.dylib";
+  "/Applications/Xcode-9.2.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftCore.dylib";
   static const char *const Darwin =
-  "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftDarwin.dylib";
+  "/Applications/Xcode-9.2.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftDarwin.dylib";
   static const char *const ObjectiveC =
-  "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftObjectiveC.dylib";
+  "/Applications/Xcode-9.2.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftObjectiveC.dylib";
   static const char *const Dispatch =
-  "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftDispatch.dylib";
+  "/Applications/Xcode-9.2.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftDispatch.dylib";
   static const char *const CoreFoundation =
-  "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftCoreFoundation.dylib";
+  "/Applications/Xcode-9.2.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftCoreFoundation.dylib";
   static const char *const IOKit =
-  "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftIOKit.dylib";
+  "/Applications/Xcode-9.2.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftIOKit.dylib";
   static const char *const CoreGraphics =
-  "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftCoreGraphics.dylib";
+  "/Applications/Xcode-9.2.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftCoreGraphics.dylib";
 
-    //  -load=/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftFoundation.dylib
-    //  -load=/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftXPC.dylib
+    //  -load=/Applications/Xcode-9.2.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftFoundation.dylib
+    //  -load=/Applications/Xcode-9.2.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftXPC.dylib
 
   static const char *const Foundation =
-  "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftFoundation.dylib";
+  "/Applications/Xcode-9.2.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftFoundation.dylib";
   static const char *const CoreData =
-  "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftCoreData.dylib";
+  "/Applications/Xcode-9.2.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftCoreData.dylib";
 
   static const char *const XPC =
-  "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftXPC.dylib";
+  "/Applications/Xcode-9.2.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftXPC.dylib";
   static const char *const os =
-  "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftos.dylib";
+  "/Applications/Xcode-9.2.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftos.dylib";
   static const char *const Metal =
-  "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftMetal.dylib";
+  "/Applications/Xcode-9.2.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftMetal.dylib";
 
   static const char *const CoreImage =
-  "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftCoreImage.dylib";
+  "/Applications/Xcode-9.2.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftCoreImage.dylib";
   static const char *const QuartzCore =
-  "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftQuartzCore.dylib";
+  "/Applications/Xcode-9.2.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftQuartzCore.dylib";
   static const char *const AppKit =
-  "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftAppKit.dylib";
+  "/Applications/Xcode-9.2.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftAppKit.dylib";
 
   static const char *const XCTest =
-  "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftXCTest.dylib";
+  "/Applications/Xcode-9.2.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftXCTest.dylib";
   static const char *const SwiftOnoneSupport =
-  "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftSwiftOnoneSupport.dylib";
+  "/Applications/Xcode-9.2.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftSwiftOnoneSupport.dylib";
 
 
 }
@@ -97,6 +116,21 @@ static void loadSwiftLibrariesOrExit() {
   }
 }
 
+void dumpObjCClasses() {
+  int numRegisteredClasses = objc_getClassList(NULL, 0);
+  assert(numRegisteredClasses > 0);
+
+  Class *classes = (Class *)malloc(sizeof(Class) * numRegisteredClasses);
+
+  numRegisteredClasses = objc_getClassList(classes, numRegisteredClasses);
+
+  for (int i = 0; i < numRegisteredClasses; i++) {
+    errs() << "registered class: " << class_getName(classes[i]) << "\n";
+  }
+
+  free(classes);
+}
+
 TEST(XCTest_Swift, Test_001_Minimal) {
     // These lines are needed for TargetMachine TM to be created correctly.
   llvm::InitializeNativeTarget();
@@ -109,12 +143,15 @@ TEST(XCTest_Swift, Test_001_Minimal) {
     "/System/Library/Frameworks/Foundation.framework/Versions/Current/Foundation"
   ));
   assert(!sys::DynamicLibrary::LoadLibraryPermanently(
-    "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks/XCTest.framework/XCTest"
+    "/Applications/Xcode-9.2.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks/XCTest.framework/XCTest"
   ));
   assert(!sys::DynamicLibrary::LoadLibraryPermanently(
     "/opt/CustomXCTestRunner/CustomXCTestRunner.dylib"
   ));
   loadSwiftLibrariesOrExit();
+  assert(!sys::DynamicLibrary::LoadLibraryPermanently(
+    "/opt/SwiftTestCase/Build/Products/Debug/SwiftTestCase.framework/SwiftTestCase"
+  ));
 
   llvm::LLVMContext llvmContext;
 
@@ -123,34 +160,65 @@ TEST(XCTest_Swift, Test_001_Minimal) {
 
   auto objcModule = loadModuleAtPath(fixturePath, llvmContext);
 
-  ObjectLinkingLayer<> ObjLayer;
+  RTDyldObjectLinkingLayer objectLayer(JITSetup::getMemoryManager());
 
   std::unique_ptr<TargetMachine> TM(
-    EngineBuilder().selectTarget(llvm::Triple(),
-                                 "",
-                                 "",
-                                 SmallVector<std::string, 1>())
-  );
+                                    EngineBuilder().selectTarget(llvm::Triple(),
+                                                                 "",
+                                                                 "",
+                                                                 SmallVector<std::string, 1>())
+                                    );
 
   assert(TM.get());
 
   SimpleCompiler compiler(*TM);
 
-  auto objcCompiledModule = compiler(*objcModule);
+  std::shared_ptr<ObjCResolver> objcResolver = std::make_shared<ObjCResolver>();
 
+  RTDyldObjectLinkingLayer::ObjectPtr objcCompiledModule =
+  std::make_shared<object::OwningBinary<object::ObjectFile>>(compiler(*objcModule));
+  assert(objcCompiledModule);
+  assert(objcCompiledModule->getBinary());
+  assert(objcCompiledModule->getBinary()->isMachO());
   std::vector<object::ObjectFile*> objcSet;
-  objcSet.push_back(objcCompiledModule.getBinary());
+  auto objcHandle = objectLayer.addObject(objcCompiledModule, objcResolver).get();
+  assert(objcHandle->get());
+    //  auto objcCompiledModule = compiler(*objcModule);
 
-  ObjCResolver objcResolver;
-  auto objcHandle = ObjLayer.addObjectSet(std::move(objcSet),
-                                          make_unique<ObjCEnabledMemoryManager>(),
-                                          &objcResolver);
+  Error err = objectLayer.emitAndFinalize(objcHandle);
 
-  ObjLayer.emitAndFinalize(objcHandle);
+//  JITSymbol symbol1 = objectLayer.findSymbol("__T032swift_001_minimal_xctestcase_run16BinarySearchTestC14testEmptyArrayyyFypSgyKXKfu_", false);
+//  errs() << "address of __T032swift_001_minimal_xctestcase_run16BinarySearchTestC14testEmptyArrayyyFypSgyKXKfu_ is:"
+//  << "\t" << to_hex16(symbol1.getAddress()) << "\n";
+
+//  JITSymbol symbol2 = ObjLayer.findSymbol("__T032swift_001_minimal_xctestcase_run16BinarySearchTestC14testEmptyArrayyyF", false);
+//  assert(symbol2.getAddress() > 0);
+//  errs() << "address of __T032swift_001_minimal_xctestcase_run16BinarySearchTestC14testEmptyArrayyyF is:"
+//         << "\t" << to_hex16(symbol2.getAddress()) << "\n";
 
   void *runnerPtr = sys::DynamicLibrary::SearchForAddressOfSymbol("CustomXCTestRunnerRun");
   auto runnerFPtr = ((int (*)(void))runnerPtr);
+
+  id runtimeClass = (id)objc_getRequiredClass("BinarySearchTest");
+  id allocatedInstance = objc_msgSend(runtimeClass, sel_registerName("alloc"));
+  id initializedInstance = objc_msgSend(allocatedInstance, sel_registerName("init"));
+  assert((id)object_getClass(initializedInstance) == runtimeClass);
+
+  here_swift_class_t *swiftClass = (here_swift_class_t *)runtimeClass;
+  assert(swiftClass->isSwift());
+
+//  date->demangledName = "FOO BAR DEMANGLD";
+
+  Ivar iv = class_getInstanceVariable((Class)runtimeClass, "searchList");
+  assert(iv);
+  errs() << "Ivar name is: " << ivar_getName(iv) << "\n";
+  id ivv = object_getIvar(initializedInstance, iv);
+  assert(iv);
+  const char *clzName = object_getClassName(ivv);
+  if (strcmp((char *)clzName, "Swift._EmptyArrayStorage") != 0) {
+    errs() << "[ERROR] class is " << clzName << "\n";
+  }
+
+//  dumpObjCClasses();
   int result = runnerFPtr();
-  result = runnerFPtr();
-  ASSERT_EQ(result, 0);
 }

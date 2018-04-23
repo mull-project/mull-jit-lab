@@ -2,8 +2,9 @@
 
 #include <gtest/gtest.h>
 
+#include <llvm/ExecutionEngine/ExecutionEngine.h>
 #include <llvm/ExecutionEngine/Orc/CompileUtils.h>
-#include <llvm/ExecutionEngine/Orc/ObjectLinkingLayer.h>
+#include <llvm/ExecutionEngine/Orc/RTDyldObjectLinkingLayer.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/Support/DynamicLibrary.h>
 #include <llvm/Support/raw_ostream.h>
@@ -43,7 +44,7 @@ TEST(DISABLED_XCTest_ObjC, Test_001_Minimal) {
 
   auto objcModule = loadModuleAtPath(fixturePath, llvmContext);
 
-  ObjectLinkingLayer<> ObjLayer;
+  RTDyldObjectLinkingLayer objectLayer(JITSetup::getMemoryManager());
 
   std::unique_ptr<TargetMachine> TM(
     EngineBuilder().selectTarget(llvm::Triple(),
@@ -56,17 +57,19 @@ TEST(DISABLED_XCTest_ObjC, Test_001_Minimal) {
 
   SimpleCompiler compiler(*TM);
 
-  auto objcCompiledModule = compiler(*objcModule);
+  std::shared_ptr<ObjCResolver> objcResolver = std::make_shared<ObjCResolver>();
 
+  RTDyldObjectLinkingLayer::ObjectPtr objcCompiledModule =
+  std::make_shared<object::OwningBinary<object::ObjectFile>>(compiler(*objcModule));
+  assert(objcCompiledModule);
+  assert(objcCompiledModule->getBinary());
+  assert(objcCompiledModule->getBinary()->isMachO());
   std::vector<object::ObjectFile*> objcSet;
-  objcSet.push_back(objcCompiledModule.getBinary());
+  auto objcHandle = objectLayer.addObject(objcCompiledModule, objcResolver).get();
+  assert(objcHandle->get());
+    //  auto objcCompiledModule = compiler(*objcModule);
 
-  ObjCResolver objcResolver;
-  auto objcHandle = ObjLayer.addObjectSet(std::move(objcSet),
-                                          make_unique<ObjCEnabledMemoryManager>(),
-                                          &objcResolver);
-
-  ObjLayer.emitAndFinalize(objcHandle);
+  Error err = objectLayer.emitAndFinalize(objcHandle);
 
   void *runnerPtr = sys::DynamicLibrary::SearchForAddressOfSymbol("CustomXCTestRunnerRun");
   auto runnerFPtr = ((int (*)(void))runnerPtr);
