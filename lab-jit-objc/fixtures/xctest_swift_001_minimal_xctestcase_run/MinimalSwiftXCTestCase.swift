@@ -59,9 +59,12 @@ class BinarySearchTest: SwiftTestCase {
 
   override func setUp() {
     super.setUp()
-    for number in 1...500 {
-      searchList.append(number)
-    }
+    print("setUp() after super, just a number: \(1000)")
+    //for number in 1...500 {
+      //print("setUp() number ")
+      //searchList.append(777)
+    //}
+    self.searchList.append(777)
   }
 
   func testEmptyArray() {

@@ -48,6 +48,7 @@ void mull::objc::Runtime::addClassesFromSection(void *sectionPtr,
     class64_t **clzPointerRef = &classes[i];
     class64_t *clzPointer = *clzPointerRef;
 
+    class_ro64_t *clzPointerRO = clzPointer->getDataPointer();
     errs() << "mull::objc::Runtime> adding class: "
            << clzPointer->getDataPointer()->getName() << "\n";
 
@@ -201,61 +202,84 @@ Class mull::objc::Runtime::registerOneClass(class64_t **classrefPtr,
   metaclassRefs.push_back(metaclassRef);
 
   here_swift_class_t *correctObjCClass = (here_swift_class_t *)objc_getClass("BinarySearchTestCorrect");
-
   assert(correctObjCClass);
 
   const method_list64_t *metaClzMethodListPtr =
     metaclassRef->getDataPointer()->getMethodListPtr();
 
+  errs() << "SUPPORT_PACKED_ISA: " << SUPPORT_PACKED_ISA << "\n";
+  errs() << "SUPPORT_INDEXED_ISA: " << SUPPORT_INDEXED_ISA << "\n";
+  errs() << "SUPPORT_NONPOINTER_ISA: " << SUPPORT_NONPOINTER_ISA << "\n";
+
+
 //  here_objc_class *superClsLL = (here_objc_class *)superclass;
 //  here_objc_class *oldClsLL = (here_objc_class *)classref;
 
-  Class clz =
-    objc_allocateClassPair(superclass,
-                           classref->getDataPointer()->getName(),
-                           0);
+  Class clz = objc_allocateClassPair(superclass,
+                                     classref->getDataPointer()->getName(),
+                                     0);
 
+//  errs() << "POINTR before" << (void *)clz << "\n";
   here_swift_class_t *swiftClassRuntimeRef = (here_swift_class_t *)clz;
-  here_swift_class_t *swiftMetaclassRuntimeRef = (here_swift_class_t *)swiftClassRuntimeRef->ISA;
 
-//  swiftClassRuntimeRef->data()->fl = correctObjCClass->data()->flags;
-//  here_swift_class_t *correctSwiftClassRuntimeRef = (here_swift_class_t *)objc_getClass("BinarySearchTestCorrect");
+//  here_swift_class_t *swiftMetaclassRuntimeRef = (here_swift_class_t *)swiftClassRuntimeRef->ISA;
 //
-//  class_ro64_t *oldRO = (class_ro64_t *)classref->getDataPointer();
-//  class_ro64_t *correctSwiftClassRO = correctSwiftClassRuntimeRef->data()->ro;
-//  class_ro64_t *runtimeRO = (class_ro64_t *)classref->getDataPointer();
+//  class_ro64_t *classRefRO = classref->getDataPointer();
+//  class_ro64_t *swiftClassRuntimeRefRO = swiftClassRuntimeRef->data()->ro;
 //
-//  here_class_rw_t *correctRW = correctSwiftClassRuntimeRef->data();
-//  here_class_rw_t *runtimeRW = swiftClassRuntimeRef->data();
+//  memcpy(swiftClassRuntimeRef->data()->ro, classref->getDataPointer(), sizeof(class_ro64_t));
 
-//  swiftClassRuntimeRef->bits.bits = (uintptr_t)classref->data;
-//  swiftClassRuntimeRef->bits.bits = (uintptr_t)classref->data;
 
-#define RW_CONSTRUCTED        (1<<25)
-#define RW_CONSTRUCTING       (1<<26)
-//  swiftClassRuntimeRef->data()->flags &= RW_CONSTRUCTED;
-//  swiftClassRuntimeRef->data()->flags |= RW_CONSTRUCTING;
-//  swiftMetaclassRuntimeRef->data()->flags &= RW_CONSTRUCTED;
-//  swiftMetaclassRuntimeRef->data()->flags |= RW_CONSTRUCTING;
-
-//  class_ro64_t *runtimeData = (class_ro64_t *)swiftClassRuntimeRef->data();
-//  *runtimeData = *oldRO;
-//  = classref->getDataPointer();
-
-//  here_swift_class_t *newClsLL = (here_swift_class_t *)clz;
-//  newClsLL->flags                 = correctObjCClass->flags;
-//  newClsLL->instanceAddressOffset = correctObjCClass->instanceAddressOffset;
-//  newClsLL->instanceSize          = correctObjCClass->instanceSize;
-//  newClsLL->instanceAlignMask     = correctObjCClass->instanceAlignMask;
-//  newClsLL->classSize     = correctObjCClass->classSize;
+//  memcpy((void *)swiftClassRuntimeRef->bits.bits, classref->data, sizeof(uintptr_t));
+////  swiftClassRuntimeRef->data()->flags = correctObjCClass->data()->flags;
 //
-//  newClsLL->data()->ro = (class_ro64_t *)oldClsLL->data();
-//  here_class_rw_t *data = newClsLL->data();
-//  class_ro64_t *ro = classref->getDataPointer();
-//  newClsLL->setInstanceSize(ro->instanceSize);
-
-//  newClsLL->data()->methods = correctObjCClass->data()->methods;
-
+////  assert(correctObjCClass->isARC());
+  swiftClassRuntimeRef->data()->ro->flags |= RO_IS_ARC;
+////  assert(swiftClassRuntimeRef->isARC());
+//  assert(swiftClassRuntimeRef->isSwift());
+//
+//#define RO_IS_ARC             (1<<7)
+//
+////  swiftClassRuntimeRef->data()->fl = correctObjCClass->data()->flags;
+////  here_swift_class_t *correctSwiftClassRuntimeRef = (here_swift_class_t *)objc_getClass("BinarySearchTestCorrect");
+////
+////  class_ro64_t *oldRO = (class_ro64_t *)classref->getDataPointer();
+////  class_ro64_t *correctSwiftClassRO = correctSwiftClassRuntimeRef->data()->ro;
+////  class_ro64_t *runtimeRO = (class_ro64_t *)classref->getDataPointer();
+////
+////  here_class_rw_t *correctRW = correctSwiftClassRuntimeRef->data();
+////  here_class_rw_t *runtimeRW = swiftClassRuntimeRef->data();
+//
+////  swiftClassRuntimeRef->bits.bits = (uintptr_t)classref->data;
+////  swiftClassRuntimeRef->bits.bits = (uintptr_t)classref->data;
+//
+//#define RW_CONSTRUCTED        (1<<25)
+//#define RW_CONSTRUCTING       (1<<26)
+////  swiftClassRuntimeRef->data()->flags &= RW_CONSTRUCTED;
+////  swiftClassRuntimeRef->data()->flags |= RW_CONSTRUCTING;
+////  swiftMetaclassRuntimeRef->data()->flags &= RW_CONSTRUCTED;
+////  swiftMetaclassRuntimeRef->data()->flags |= RW_CONSTRUCTING;
+//
+////  class_ro64_t *runtimeData = (class_ro64_t *)swiftClassRuntimeRef->data();
+////  *runtimeData = *oldRO;
+////  = classref->getDataPointer();
+//
+////  here_swift_class_t *newClsLL = (here_swift_class_t *)clz;
+////  newClsLL->flags                 = correctObjCClass->flags;
+////  newClsLL->instanceAddressOffset = correctObjCClass->instanceAddressOffset;
+////  newClsLL->instanceSize          = correctObjCClass->instanceSize;
+////  newClsLL->instanceAlignMask     = correctObjCClass->instanceAlignMask;
+////  newClsLL->classSize     = correctObjCClass->classSize;
+////
+////  newClsLL->data()->ro = (class_ro64_t *)oldClsLL->data();
+  here_class_rw_t *data = swiftClassRuntimeRef->data();
+//  class_ro64_t *ro = data->ro;
+  assert(swiftClassRuntimeRef->isARC());
+  assert(swiftClassRuntimeRef->isSwift());
+//////  newClsLL->setInstanceSize(ro->instanceSize);
+////
+//////  newClsLL->data()->methods = correctObjCClass->data()->methods;
+////
 //  method_list_t *mList = (method_list_t *)ro->baseMethods;
 //  for (auto& meth : *mList) {
 //    const char *name = sel_getName(meth.name);
@@ -267,22 +291,28 @@ Class mull::objc::Runtime::registerOneClass(class64_t **classrefPtr,
 //  mList->setFixedUp();
 //  data->methods.attachLists((method_list_t **)&ro->baseMethods, 1);
 //
-//  assert(newClsLL->isSwift());
+//  property_list_t *proplist = ro->baseProperties;
+//  if (proplist) {
+//    data->properties.attachLists(&proplist, 1);
+//  }
+
+////  objc_msgSend(clz, sel_registerName("description"));
+////  assert(newClsLL->isSwift());
+////
+////  assert(oldClsLL->isSwift());
+////  assert(superClsLL->isSwift());
 //
-//  assert(oldClsLL->isSwift());
-//  assert(superClsLL->isSwift());
-
-//  newClsLL->data()->ro->flags = correctObjCClass->data()->flags;
-//  newClsLL->data()-> = correctObjCClass->data();
-//  memcpy(newClsLL, correctObjCClass, sizeof(here_swift_class_t));
-
-//  newClsLL->data() = correctObjCClass->data()->methods;
-
-    //  abort();
-  /* IVARS */
+////  newClsLL->data()->ro->flags = correctObjCClass->data()->flags;
+////  newClsLL->data()-> = correctObjCClass->data();
+////  memcpy(newClsLL, correctObjCClass, sizeof(here_swift_class_t));
+//
+////  newClsLL->data() = correctObjCClass->data()->methods;
+//
+//    //  abort();
+//  /* IVARS */
   const ivar_list64_t *clzIvarListPtr = classref->getDataPointer()->ivars;
-  if (NO && clzIvarListPtr) {
-    const ivar64_t *ivars = (const ivar64_t *)(clzIvarListPtr + 1);
+  if (clzIvarListPtr) {
+    const ivar64_t *ivars = &clzIvarListPtr->first;
 
     for (uint32_t i = 0; i < clzIvarListPtr->count; i++) {
       const ivar64_t *ivar = ivars + i;
@@ -293,7 +323,11 @@ Class mull::objc::Runtime::registerOneClass(class64_t **classrefPtr,
       bool success = class_addIvar(clz, ivar->name, ivar->size, log2(ivar->size), ivar->type);
       assert(success);
 
-      errs() << "adding ivar: " << ivar->name << " / " << ivar->type << "/" << ivar->size << "\n";
+      errs() << "adding ivar - name: " << ivar->name
+             << " size: " << ivar->size
+             << " alignment: " << ivar->alignment
+             << "types: " << ivar->type
+             << "\n";
     }
   }
 
@@ -331,9 +365,10 @@ Class mull::objc::Runtime::registerOneClass(class64_t **classrefPtr,
   }
 
   /* PROPERTIES */
-  const objc_property_list64 *propertyListPtr = classref->getDataPointer()->baseProperties;
-  if (NO && propertyListPtr) {
-    const objc_property64 *properties = (const objc_property64 *)(propertyListPtr + 1);
+  objc_property_list64 *propertyListPtr = classref->getDataPointer()->baseProperties;
+  if (propertyListPtr) {
+    const objc_property64 *properties = &propertyListPtr->first;
+//    const objc_property64 *properties = (const objc_property64 *)(propertyListPtr + 1);
 
     objc_property_attribute_t attributesBuf[10];
     memset(attributesBuf, 0, 10 * sizeof(objc_property_attribute_t));
@@ -350,58 +385,62 @@ Class mull::objc::Runtime::registerOneClass(class64_t **classrefPtr,
                               stringStorage,
                               attributesBuf,
                               &attributeCount);
-      class_addProperty(clz, property->name, attributesBuf, attributeCount);
+      assert(class_addProperty(clz, property->name, attributesBuf, attributeCount));
     }
   }
   objc_registerClassPair(clz);
+  assert(swiftClassRuntimeRef->isARC());
+  assert(swiftClassRuntimeRef->isSwift());
+
+//  assert(swiftClassRuntimeRef->isARC());
 
 //  objc_registerClassPair((Class)classref);
 
   /* CLASS REGISTRATION */
 //  here_swift_class_t * metaclassRuntimeRef = (here_swift_class_t *)objc_getMetaClass(class_getName(clz));
 //  memcpy(metaclassRuntimeRef->data()->ro, classref->isa->getDataPointer(), sizeof(class_ro64_t));
-
+//
   Class metaClz = objc_getMetaClass(class_getName(clz));
-
-  errs() << "+++ Registering Class: " << object_getClassName(clz)
-  << " (" << clz << ")" << "\n";
-
-  assert(RuntimeHelpers::class_isRegistered(clz));
-
-  /* METACLASS METHODS REGISTRATION */
-  if (metaClzMethodListPtr) {
-    const method64_t *firstMetaclassMethodPtr = metaClzMethodListPtr->getFirstMethodPointer();
-
-    errs() << "Dumping metaclass' methods" << "\n";
-    for (uint32_t i = 0; i < metaClzMethodListPtr->count; i++) {
-      const method64_t *methodPtr = firstMetaclassMethodPtr + i;
-
-      errs() << methodPtr->getDebugDescription();
-
-      IMP initIMP = imp_implementationWithBlock(^(id self, id arg1, id arg2) {
-        printf("accessing imp of: %s\n", methodPtr->name);
-
-        abort();
-      });
-
-//      IMP imp = (IMP)initIMP; //methodPtr->imp;
-
-      auto imp = (IMP)methodPtr->imp;
-      class_addMethod(metaClz,
-                      sel_registerName(sel_getName(methodPtr->name)),
-                      imp,
-                      (const char *)methodPtr->types);
-    }
-  }
-
+//
+//  errs() << "+++ Registering Class: " << object_getClassName(clz)
+//  << " (" << clz << ")" << "\n";
+//
+//  assert(RuntimeHelpers::class_isRegistered(clz));
+//
+//  /* METACLASS METHODS REGISTRATION */
+//  if (metaClzMethodListPtr) {
+//    const method64_t *firstMetaclassMethodPtr = metaClzMethodListPtr->getFirstMethodPointer();
+//
+//    errs() << "Dumping metaclass' methods" << "\n";
+//    for (uint32_t i = 0; i < metaClzMethodListPtr->count; i++) {
+//      const method64_t *methodPtr = firstMetaclassMethodPtr + i;
+//
+//      errs() << methodPtr->getDebugDescription();
+//
+//      IMP initIMP = imp_implementationWithBlock(^(id self, id arg1, id arg2) {
+//        printf("accessing imp of: %s\n", methodPtr->name);
+//
+//        abort();
+//      });
+//
+////      IMP imp = (IMP)initIMP; //methodPtr->imp;
+//
+//      auto imp = (IMP)methodPtr->imp;
+//      class_addMethod(metaClz,
+//                      sel_registerName(sel_getName(methodPtr->name)),
+//                      imp,
+//                      (const char *)methodPtr->types);
+//    }
+//  }
+//
   Class registeredMetaClass = objc_getMetaClass(classref->getDataPointer()->getName());
   assert(metaClz == registeredMetaClass);
 
 //  objc_msgSend(registeredMetaClass, sel_registerName("load"));
 //  objc_msgSend(registeredMetaClass, sel_registerName("initialize"));
 
-  RuntimeHelpers::class_dumpMethods(clz);
-  RuntimeHelpers::class_dumpMethods(metaClz);
+//  RuntimeHelpers::class_dumpMethods(clz);
+//  RuntimeHelpers::class_dumpMethods(metaClz);
 
   return clz;
 }
@@ -490,12 +529,26 @@ mull::objc::Runtime::parsePropertyAttributes(const char *const attributesStr,
       here_swift_class_t *swiftClassRuntimeRef = (here_swift_class_t *)runtimeClass;
       here_swift_class_t *correctSwiftClassRuntimeRef = (here_swift_class_t *)objc_getClass("BinarySearchTestCorrect");
 
-      class_ro64_t *oldRO = (class_ro64_t *)classref->getDataPointer();
-      class_ro64_t *correctSwiftClassRO = correctSwiftClassRuntimeRef->data()->ro;
-      class_ro64_t *runtimeRO = (class_ro64_t *)classref->getDataPointer();
+#   define ISA_MASK        0x00007ffffffffff8ULL
+//      assert((void *)objc_getMetaClass("BinarySearchTest") == (void *)swiftClassRuntimeRef->ISA);
+//      assert((void *)objc_getMetaClass("BinarySearchTest") == ((class64_t *)swiftClassRuntimeRef)->isa);
+      classref->isa = (class64_t *)objc_getMetaClass(object_getClassName(runtimeClass));
+      classref->superclass = (class64_t *)class_getSuperclass(runtimeClass); //(class64_t *)swiftClassRuntimeRef->superclass;
+//      classref->data = (class_ro64_t *)swiftClassRuntimeRef->bits.bits;
+//      classref->data = (class_ro64_t *)swiftClassRuntimeRef->data();
+//      classref->data = (class_ro64_t *)swiftClassRuntimeRef->data()->ro;
+//      memcpy(classref->data, (void *)swiftClassRuntimeRef->data()->ro, sizeof(class_ro64_t));
 
-      here_class_rw_t *correctRW = correctSwiftClassRuntimeRef->data();
-      here_class_rw_t *runtimeRW = swiftClassRuntimeRef->data();
+//      *classref_ref = (class64_t *)swiftClassRuntimeRef;
+//      *classref = *((class64_t *)swiftClassRuntimeRef);
+      assert(swiftClassRuntimeRef->isARC());
+
+//      class_ro64_t *oldRO = (class_ro64_t *)classref->getDataPointer();
+//      class_ro64_t *correctSwiftClassRO = correctSwiftClassRuntimeRef->data()->ro;
+//      class_ro64_t *runtimeRO = (class_ro64_t *)classref->getDataPointer();
+//
+//      here_class_rw_t *correctRW = correctSwiftClassRuntimeRef->data();
+//      here_class_rw_t *runtimeRW = swiftClassRuntimeRef->data();
 //      swiftClassRW->ro->weakIvarLayout
 //      assert(class_isMetaClass(runtimeClass) == false);
 
@@ -505,8 +558,8 @@ mull::objc::Runtime::parsePropertyAttributes(const char *const attributesStr,
 
 //      swiftClassRW->flags = 0;
       class64_t *classRegisteredRef = (class64_t *)pair.second;
-      errs() << "Is Swift Registered: " << classRegisteredRef->isSwift() << "\n";
-      errs() << "Is Swift Registered fast data mask: " << classRegisteredRef->isFastDataMask() << "\n";
+//      errs() << "Is Swift Registered: " << classRegisteredRef->isSwift() << "\n";
+//      errs() << "Is Swift Registered fast data mask: " << classRegisteredRef->isFastDataMask() << "\n";
 
 //      ((class64_t *)runtimeClass)->getDataPointer()->flags |= (1UL<<0);
 //      ((class64_t *)runtimeClass)->getDataPointer()->flags |= 0x00007ffffffffff8UL;
@@ -542,11 +595,11 @@ mull::objc::Runtime::parsePropertyAttributes(const char *const attributesStr,
 //      classref->isa = ((class64_t *)runtimeClass)->isa;
 //      memcpy(classref, runtimeClass, 40);
 
-      errs() << "old class pointers: " << (void *)&classref << " / " << (void *)classref << "\n";
+      errs() << "old class pointers: " << (void *)classref_ref << " / " << (void *)classref << "\n";
       errs() << "new class pointers: " << (void *)runtimeClass << " / " << (void *)classref << "\n";
 
-//      Class classObjCRef = (Class)classref;
-//      __unused id _ = objc_msgSend(classObjCRef, sel_registerName("description"));
+      Class classObjCRef = (Class)classref;
+      __unused id _ = objc_msgSend(classObjCRef, sel_registerName("description"));
 
 //      id instance = objc_msgSend(objc_msgSend(runtimeClass, sel_registerName("alloc")), sel_registerName("description"));
 
@@ -566,10 +619,10 @@ mull::objc::Runtime::parsePropertyAttributes(const char *const attributesStr,
 //      registeredClassAsObjC->data()->flags |= 388;
 //      assert(class_isMetaClass(runtimeClass) == false);
 
-      errs() << "Is Swift: " << classref->isSwift() << "\n";
-      errs() << "Is Fast data mask: " << classref->isFastDataMask() << "\n";
-      errs() << "Is Swift Registered: " << classRegisteredRef->isSwift() << "\n";
-      errs() << "Is Swift Registered fast data mask: " << classRegisteredRef->isFastDataMask() << "\n";
+//      errs() << "Is Swift: " << classref->isSwift() << "\n";
+//      errs() << "Is Fast data mask: " << classref->isFastDataMask() << "\n";
+//      errs() << "Is Swift Registered: " << classRegisteredRef->isSwift() << "\n";
+//      errs() << "Is Swift Registered fast data mask: " << classRegisteredRef->isFastDataMask() << "\n";
     }
   }
 } }

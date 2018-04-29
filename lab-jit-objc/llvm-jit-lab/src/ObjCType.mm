@@ -11,8 +11,6 @@
 
 using namespace llvm;
 
-namespace mull { namespace objc {
-
 std::string method64_t::getDebugDescription(int level) const {
   std::ostringstream os;
   std::string padding = std::string(level * 4, ' ');
@@ -102,6 +100,4 @@ std::string class64_t::getDebugDescription(Description level) const {
 
   return os.str();
 }
-
-} }
 

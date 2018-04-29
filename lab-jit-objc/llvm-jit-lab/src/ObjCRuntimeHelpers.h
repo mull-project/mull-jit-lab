@@ -2,8 +2,6 @@
 
 #include <objc/runtime.h>
 
-namespace mull { namespace objc {
-
 class RuntimeHelpers {
 public:
   static bool isValidPointer(void *ptr);
@@ -14,5 +12,3 @@ public:
 
   static void class_dumpMethods(Class clz);
 };
-
-} } // namespace mull { namespace objc

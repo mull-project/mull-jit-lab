@@ -6,8 +6,6 @@
 
 using namespace llvm;
 
-namespace mull { namespace objc {
-
 bool RuntimeHelpers::isValidPointer(void *ptr) {
   return (ptr != NULL) &&
   ((uintptr_t)ptr > 0x1000) &&
@@ -86,5 +84,3 @@ void RuntimeHelpers::class_dumpMethods(Class clz) {
 
   free(methods);
 }
-
-} }
