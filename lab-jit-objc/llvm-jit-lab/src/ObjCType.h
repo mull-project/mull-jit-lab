@@ -501,6 +501,67 @@ public:
 //    method64_t **lists;
 //  };
 
+struct property_t {
+  const char *name;
+  const char *attributes;
+};
+
+struct property_list_t : entsize_list_tt<property_t, property_list_t, 0> {
+};
+
+class property_array_t :
+public list_array_tt<property_t, property_list_t>
+{
+  typedef list_array_tt<property_t, property_list_t> Super;
+
+public:
+  property_array_t duplicate() {
+    return Super::duplicate<property_array_t>();
+  }
+};
+typedef uintptr_t protocol_ref_t;  // protocol_t *, but unremapped
+
+struct protocol_list_t {
+  // count is 64-bit by accident.
+  uintptr_t count;
+  protocol_ref_t list[0]; // variable-size
+
+  size_t byteSize() const {
+    return sizeof(*this) + count*sizeof(list[0]);
+  }
+
+  protocol_list_t *duplicate() const {
+    return (protocol_list_t *)memdup(this, this->byteSize());
+  }
+
+  typedef protocol_ref_t* iterator;
+  typedef const protocol_ref_t* const_iterator;
+
+  const_iterator begin() const {
+    return list;
+  }
+  iterator begin() {
+    return list;
+  }
+  const_iterator end() const {
+    return list + count;
+  }
+  iterator end() {
+    return list + count;
+  }
+};
+
+class protocol_array_t :
+public list_array_tt<protocol_ref_t, protocol_list_t>
+{
+  typedef list_array_tt<protocol_ref_t, protocol_list_t> Super;
+
+public:
+  protocol_array_t duplicate() {
+    return Super::duplicate<protocol_array_t>();
+  }
+};
+
 struct here_class_rw_t {
   // Be warned that Symbolication knows the layout of this structure.
   uint32_t flags;
@@ -509,13 +570,13 @@ struct here_class_rw_t {
   mull::objc::class_ro64_t *ro;
 
   method_array_t methods;
-  //    property_array_t properties;
-  //    protocol_array_t protocols;
-  //
-  //    Class firstSubclass;
-  //    Class nextSiblingClass;
-  //
-  //    char *demangledName;
+  property_array_t properties;
+//  protocol_array_t protocols;
+//
+//  Class firstSubclass;
+//  Class nextSiblingClass;
+//
+//  char *demangledName;
 
   //#if SUPPORT_INDEXED_ISA
   //    uint32_t index;
@@ -609,3 +670,20 @@ struct here_objc_class {
 };
 
 OBJC_EXPORT const uintptr_t objc_debug_isa_class_mask;
+
+struct here_swift_class_t : here_objc_class {
+  uint32_t flags;
+  uint32_t instanceAddressOffset;
+  uint32_t instanceSize;
+  uint16_t instanceAlignMask;
+  uint16_t reserved;
+
+  uint32_t classSize;
+  uint32_t classAddressOffset;
+  void *description;
+  // ...
+
+  void *baseAddress() {
+    return (void *)((uint8_t *)this - classAddressOffset);
+  }
+};

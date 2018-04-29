@@ -22,12 +22,15 @@
 #include "ObjCRuntime.h"
 #include "TestHelpers.h"
 #include "ObjCRuntimeHelpers.h"
+#include <dlfcn.h>
 
 #include <memory>
 
 using namespace llvm;
 using namespace llvm::orc;
 using namespace llvm::object;
+
+@class BinarySearchTest;
 
 static
 OwningBinary<ObjectFile> getObjectFromDisk(const std::string &path) {
@@ -210,10 +213,19 @@ TEST(XCTest_Swift, Test_001_Minimal) {
     "/opt/CustomXCTestRunner/CustomXCTestRunner.dylib"
   ));
   loadSwiftLibrariesOrExit();
-  assert(!sys::DynamicLibrary::LoadLibraryPermanently(
-    "/opt/SwiftTestCase.framework/SwiftTestCase"
-  ));
+  assert(dlopen("/opt/SwiftTestCase/Build/Products/Release/SwiftTestCase.framework/Versions/Current/SwiftTestCase", RTLD_NOW));
 
+  Class correctBSTClazz = objc_getClass("BinarySearchTestCorrect");
+  assert(correctBSTClazz);
+  id correctBSTClazzInstance = objc_msgSend(objc_msgSend(correctBSTClazz, @selector(alloc)), @selector(init));
+
+//  objc_constructInstance(correctBSTClazz, malloc(class_getInstanceSize(correctBSTClazz)));
+  assert(correctBSTClazzInstance);
+  errs() << "Calling correct class: " << "\n";
+  objc_msgSend(correctBSTClazzInstance, sel_registerName("setUp"));
+
+//  sleep(0.5);
+//  return 0;
   llvm::LLVMContext llvmContext;
 
   char fixturePath[255];
@@ -292,47 +304,27 @@ TEST(XCTest_Swift, Test_001_Minimal) {
 
 //  ObjLayer.emitAndFinalize(objcHandle);
 
-//  std::string functionName = "_CustomXCTestRunnerRun";
-//  errs() << "Running function: " << functionName << "\n";
-//  JITSymbol symbol = ObjLayer.findSymbol(functionName, false);
-//
-//  void *fpointer =
-//  reinterpret_cast<void *>(static_cast<uintptr_t>(symbol.getAddress()));
-//
-//  if (fpointer == nullptr) {
-//    errs() << "CustomTestRunner> Can't find pointer to function: "
-//    << functionName << "\n";
-//    exit(1);
-//  }
-//
-//  auto runnerFunction = ((int (*)(void))(intptr_t)fpointer);
-//
-//  int result = runnerFunction();
+  /**
+  {
 
+    std::string functionName = "__T032swift_001_minimal_xctestcase_run15sandboxFunctionyyF";
+    errs() << "Running function: " << functionName << "\n";
+    JITSymbol symbol = objectLayer.findSymbol(functionName, false);
 
-  Class correctBSTClazz = objc_getClass("BinarySearchTestCorrect");
-  assert(correctBSTClazz);
-  id correctBSTClazzInstance =
-    objc_constructInstance(correctBSTClazz, malloc(class_getInstanceSize(correctBSTClazz)));
-  assert(correctBSTClazzInstance);
+    void *fpointer =
+      reinterpret_cast<void *>(static_cast<uintptr_t>(symbol.getAddress().get()));
 
-  Class wrongBSTClazz = objc_getClass("BinarySearchTestWrong");
-  assert(wrongBSTClazz);
-  id wrongInstance =
-    objc_constructInstance(wrongBSTClazz, malloc(class_getInstanceSize(wrongBSTClazz)));
-  assert(wrongInstance);
+    if (fpointer == nullptr) {
+      errs() << "CustomTestRunner> Can't find pointer to function: "
+      << functionName << "\n";
+      exit(1);
+    }
 
-  uintptr_t *swift_isaMask = (uintptr_t *)sys::DynamicLibrary::SearchForAddressOfSymbol("swift_isaMask");
-//  assert((uintptr_t)swift_isaMask > 0);
-//  errs
-
-  assert(*swift_isaMask == FAST_DATA_MASK);
-
-  here_objc_class *correctBSTOBJCClazz = (here_objc_class *)correctBSTClazz;
-  here_objc_class *wrongBSTOBJCClazz = (here_objc_class *)wrongBSTClazz;
-
-//  wrongBSTOBJCClazz->bits.bits = correctBSTOBJCClazz->bits.bits;
-//  assert(correctBSTOBJCClazz->bits.bits == wrongBSTOBJCClazz->bits.bits);
+    auto runnerFunction = ((int (*)(void))(intptr_t)fpointer);
+    int result;
+//    result = runnerFunction();
+  }
+*/
 
 #define FAST_REQUIRES_RAW_ISA   (1UL<<2)
   assert(FAST_IS_SWIFT == (1UL<<0));
@@ -343,39 +335,55 @@ TEST(XCTest_Swift, Test_001_Minimal) {
 #define RO_HAS_CXX_STRUCTORS  (1<<2)
 #define RO_IS_ARC             (1<<7)
 
-  assert(correctBSTOBJCClazz->bits.bits & FAST_IS_SWIFT);
-  assert(wrongBSTOBJCClazz->bits.bits & FAST_IS_SWIFT);
+//  Class wrongBSTClazz = objc_getClass("BinarySearchTest");
+//  here_swift_class_t *correctBSTOBJCClazz = (__bridge_retained here_swift_class_t *)correctBSTClazz;
+//  here_swift_class_t *wrongBSTOBJCClazz = (__bridge_retained here_swift_class_t *)wrongBSTClazz;
 
-  assert(correctBSTOBJCClazz->bits.bits & FAST_DATA_MASK);
-  assert(wrongBSTOBJCClazz->bits.bits & FAST_DATA_MASK);
 
-  assert((correctBSTOBJCClazz->bits.bits & FAST_HAS_DEFAULT_RR) == 0);
-  assert((wrongBSTOBJCClazz->bits.bits & FAST_HAS_DEFAULT_RR) == 0);
+//  assert(wrongBSTClazz);
+//
+//  id rawWrongInstance = objc_msgSend(wrongBSTClazz, @selector(alloc));
+//  id wrongInstance = objc_msgSend(rawWrongInstance, @selector(init));
+//  assert(wrongInstance);
 
-  assert((correctBSTOBJCClazz->bits.bits & RW_HAS_DEFAULT_AWZ) == 0);
-  assert((wrongBSTOBJCClazz->bits.bits & RW_HAS_DEFAULT_AWZ) == 0);
+//  wrongBSTOBJCClazz->flags = correctBSTOBJCClazz->flags;
+//  wrongBSTOBJCClazz->instanceSize = correctBSTOBJCClazz->instanceSize;
+//  wrongBSTOBJCClazz->classSize = correctBSTOBJCClazz->classSize;
+//  assert(correctBSTOBJCClazz->bits.bits == wrongBSTOBJCClazz->bits.bits);
 
-  assert((correctBSTOBJCClazz->bits.bits & FAST_REQUIRES_RAW_ISA) == 0);
-  assert((wrongBSTOBJCClazz->bits.bits & FAST_REQUIRES_RAW_ISA) == 0);
+//  wrongBSTOBJCClazz->bits.setBits(RO_IS_ARC);
+//  wrongBSTOBJCClazz->bits.setBits(FAST_IS_SWIFT);
+//  assert(correctBSTOBJCClazz->bits.bits & FAST_IS_SWIFT);
+//  assert(wrongBSTOBJCClazz->bits.bits & FAST_IS_SWIFT);
+//
+//  assert(correctBSTOBJCClazz->bits.bits & FAST_DATA_MASK);
+//  assert(wrongBSTOBJCClazz->bits.bits & FAST_DATA_MASK);
+//
+//  assert((correctBSTOBJCClazz->bits.bits & FAST_REQUIRES_RAW_ISA) == 0);
+//  assert((wrongBSTOBJCClazz->bits.bits & FAST_REQUIRES_RAW_ISA) == 0);
+//
+//  assert((correctBSTOBJCClazz->bits.bits & RO_HAS_CXX_STRUCTORS) == 0);
+//  assert((wrongBSTOBJCClazz->bits.bits & RO_HAS_CXX_STRUCTORS) == 0);
 
-  assert((correctBSTOBJCClazz->bits.bits & RO_HAS_CXX_STRUCTORS) == 0);
-  assert((wrongBSTOBJCClazz->bits.bits & RO_HAS_CXX_STRUCTORS) == 0);
-
-  errs() << "Calling correct class: " << "\n";
-  objc_msgSend(correctBSTClazzInstance, sel_registerName("setUp"));
-  errs() << "Calling wrong class: " << "\n";
+  /* FLAKY BITS
+//  assert((correctBSTOBJCClazz->bits.bits & RW_HAS_DEFAULT_AWZ) == 0);
+//  assert((wrongBSTOBJCClazz->bits.bits & RW_HAS_DEFAULT_AWZ) == 0);
+//  assert((correctBSTOBJCClazz->bits.bits & FAST_HAS_DEFAULT_RR) == 0);
+//  assert((wrongBSTOBJCClazz->bits.bits & FAST_HAS_DEFAULT_RR) == 0);
+   */
 
 //  void *pointer = (void *)((((uintptr_t)correctBSTClazzInstance) & *swift_isaMask) + 0x68);
 //  void (*funcPtr)(void *, SEL) = (void (*)(void *, SEL))pointer;
 //  funcPtr(correctBSTClazzInstance, sel_registerName("setUp"));
 
-  
-  objc_msgSend(wrongInstance, sel_registerName("setUp"));
-  objc_msgSend(wrongInstance, sel_registerName("setUp"));
+//  objc_msgSend(wrongInstance, sel_registerName("setUp"));
+//  objc_msgSend(wrongInstance, sel_registerName("setUp"));
 
-  void *runnerPtr = sys::DynamicLibrary::SearchForAddressOfSymbol("CustomXCTestRunnerRun");
-  errs() << "runnerPtr: " << runnerPtr << "\n";
-  auto runnerFPtr = ((int (*)(void))runnerPtr);
-  int result = runnerFPtr();
-  ASSERT_EQ(result, 0);
+  {
+    void *runnerPtr = sys::DynamicLibrary::SearchForAddressOfSymbol("CustomXCTestRunnerRun");
+    errs() << "runnerPtr: " << runnerPtr << "\n";
+    auto runnerFPtr = ((int (*)(void))runnerPtr);
+    int result = runnerFPtr();
+    ASSERT_EQ(result, 0);
+  }
 }
