@@ -200,39 +200,102 @@ Class mull::objc::Runtime::registerOneClass(class64_t **classrefPtr,
   classRefs.push_back(classref);
   metaclassRefs.push_back(metaclassRef);
 
+  here_swift_class_t *correctObjCClass = (here_swift_class_t *)objc_getClass("BinarySearchTestCorrect");
+
+  assert(correctObjCClass);
+
   const method_list64_t *metaClzMethodListPtr =
     metaclassRef->getDataPointer()->getMethodListPtr();
 
-  here_objc_class *superClsLL = (here_objc_class *)superclass;
-  here_objc_class *oldClsLL = (here_objc_class *)classref;
+//  here_objc_class *superClsLL = (here_objc_class *)superclass;
+//  here_objc_class *oldClsLL = (here_objc_class *)classref;
 
   Class clz =
     objc_allocateClassPair(superclass,
                            classref->getDataPointer()->getName(),
                            0);
 
-  /*
-  here_objc_class *newClsLL = (here_objc_class *)clz;
-  newClsLL->data()->ro = (class_ro64_t *)oldClsLL->data();
-  here_class_rw_t *data = newClsLL->data();
-  class_ro64_t *ro = newClsLL->data()->ro;
-  newClsLL->setInstanceSize(ro->instanceSize);
+  here_swift_class_t *swiftClassRuntimeRef = (here_swift_class_t *)clz;
+  here_swift_class_t *swiftMetaclassRuntimeRef = (here_swift_class_t *)swiftClassRuntimeRef->ISA;
 
-  method_list_t *mList = (method_list_t *)ro->baseMethods;
-  for (auto& meth : *mList) {
-    const char *name = sel_getName(meth.name);
-    meth.name = sel_registerName(name);
+//  swiftClassRuntimeRef->data()->fl = correctObjCClass->data()->flags;
+//  here_swift_class_t *correctSwiftClassRuntimeRef = (here_swift_class_t *)objc_getClass("BinarySearchTestCorrect");
+//
+//  class_ro64_t *oldRO = (class_ro64_t *)classref->getDataPointer();
+//  class_ro64_t *correctSwiftClassRO = correctSwiftClassRuntimeRef->data()->ro;
+//  class_ro64_t *runtimeRO = (class_ro64_t *)classref->getDataPointer();
+//
+//  here_class_rw_t *correctRW = correctSwiftClassRuntimeRef->data();
+//  here_class_rw_t *runtimeRW = swiftClassRuntimeRef->data();
+
+//  swiftClassRuntimeRef->bits.bits = (uintptr_t)classref->data;
+//  swiftClassRuntimeRef->bits.bits = (uintptr_t)classref->data;
+
+#define RW_CONSTRUCTED        (1<<25)
+#define RW_CONSTRUCTING       (1<<26)
+//  swiftClassRuntimeRef->data()->flags &= RW_CONSTRUCTED;
+//  swiftClassRuntimeRef->data()->flags |= RW_CONSTRUCTING;
+//  swiftMetaclassRuntimeRef->data()->flags &= RW_CONSTRUCTED;
+//  swiftMetaclassRuntimeRef->data()->flags |= RW_CONSTRUCTING;
+
+//  class_ro64_t *runtimeData = (class_ro64_t *)swiftClassRuntimeRef->data();
+//  *runtimeData = *oldRO;
+//  = classref->getDataPointer();
+
+//  here_swift_class_t *newClsLL = (here_swift_class_t *)clz;
+//  newClsLL->flags                 = correctObjCClass->flags;
+//  newClsLL->instanceAddressOffset = correctObjCClass->instanceAddressOffset;
+//  newClsLL->instanceSize          = correctObjCClass->instanceSize;
+//  newClsLL->instanceAlignMask     = correctObjCClass->instanceAlignMask;
+//  newClsLL->classSize     = correctObjCClass->classSize;
+//
+//  newClsLL->data()->ro = (class_ro64_t *)oldClsLL->data();
+//  here_class_rw_t *data = newClsLL->data();
+//  class_ro64_t *ro = classref->getDataPointer();
+//  newClsLL->setInstanceSize(ro->instanceSize);
+
+//  newClsLL->data()->methods = correctObjCClass->data()->methods;
+
+//  method_list_t *mList = (method_list_t *)ro->baseMethods;
+//  for (auto& meth : *mList) {
+//    const char *name = sel_getName(meth.name);
+//    meth.name = sel_registerName(name);
+//  }
+//  method64_t::SortBySELAddress sorter;
+//  std::stable_sort(mList->begin(), mList->end(), sorter);
+//
+//  mList->setFixedUp();
+//  data->methods.attachLists((method_list_t **)&ro->baseMethods, 1);
+//
+//  assert(newClsLL->isSwift());
+//
+//  assert(oldClsLL->isSwift());
+//  assert(superClsLL->isSwift());
+
+//  newClsLL->data()->ro->flags = correctObjCClass->data()->flags;
+//  newClsLL->data()-> = correctObjCClass->data();
+//  memcpy(newClsLL, correctObjCClass, sizeof(here_swift_class_t));
+
+//  newClsLL->data() = correctObjCClass->data()->methods;
+
+    //  abort();
+  /* IVARS */
+  const ivar_list64_t *clzIvarListPtr = classref->getDataPointer()->ivars;
+  if (NO && clzIvarListPtr) {
+    const ivar64_t *ivars = (const ivar64_t *)(clzIvarListPtr + 1);
+
+    for (uint32_t i = 0; i < clzIvarListPtr->count; i++) {
+      const ivar64_t *ivar = ivars + i;
+
+        // TODO: Can be dangerous: we are passing ivar->type which is something
+        // like NSString instead of @encode(id) which is "@".
+        // This is probably needed for runtime introspection.
+      bool success = class_addIvar(clz, ivar->name, ivar->size, log2(ivar->size), ivar->type);
+      assert(success);
+
+      errs() << "adding ivar: " << ivar->name << " / " << ivar->type << "/" << ivar->size << "\n";
+    }
   }
-  method64_t::SortBySELAddress sorter;
-  std::stable_sort(mList->begin(), mList->end(), sorter);
-
-  mList->setFixedUp();
-  data->methods.attachLists((method_list_t **)&ro->baseMethods, 1);
-
-  assert(newClsLL->isSwift());
-  assert(oldClsLL->isSwift());
-  assert(superClsLL->isSwift());
-*/
 
   /* INSTANCE METHODS */
   const method_list64_t *clzMethodListPtr = classref->getDataPointer()->getMethodListPtr();
@@ -267,29 +330,9 @@ Class mull::objc::Runtime::registerOneClass(class64_t **classrefPtr,
     }
   }
 
-//  abort();
-  /* IVARS */
-  const ivar_list64_t *clzIvarListPtr = classref->getDataPointer()->ivars;
-  if (clzIvarListPtr) {
-    const ivar64_t *ivars = (const ivar64_t *)(clzIvarListPtr + 1);
-
-    for (uint32_t i = 0; i < clzIvarListPtr->count; i++) {
-      const ivar64_t *ivar = ivars + i;
-
-      // TODO: Can be dangerous: we are passing ivar->type which is something
-      // like NSString instead of @encode(id) which is "@".
-      // This is probably needed for runtime introspection.
-      bool success = class_addIvar(clz, ivar->name, ivar->size, log2(ivar->size), ivar->type);
-
-      assert(success);
-
-      errs() << "adding ivar: " << ivar->name << " / " << ivar->type << "/" << ivar->size << "\n";
-    }
-  }
-
   /* PROPERTIES */
   const objc_property_list64 *propertyListPtr = classref->getDataPointer()->baseProperties;
-  if (propertyListPtr) {
+  if (NO && propertyListPtr) {
     const objc_property64 *properties = (const objc_property64 *)(propertyListPtr + 1);
 
     objc_property_attribute_t attributesBuf[10];
@@ -311,11 +354,13 @@ Class mull::objc::Runtime::registerOneClass(class64_t **classrefPtr,
     }
   }
   objc_registerClassPair(clz);
-#define RW_CONSTRUCTED        (1<<25)
 
 //  objc_registerClassPair((Class)classref);
 
   /* CLASS REGISTRATION */
+//  here_swift_class_t * metaclassRuntimeRef = (here_swift_class_t *)objc_getMetaClass(class_getName(clz));
+//  memcpy(metaclassRuntimeRef->data()->ro, classref->isa->getDataPointer(), sizeof(class_ro64_t));
+
   Class metaClz = objc_getMetaClass(class_getName(clz));
 
   errs() << "+++ Registering Class: " << object_getClassName(clz)
@@ -438,24 +483,27 @@ mull::objc::Runtime::parsePropertyAttributes(const char *const attributesStr,
 
       class64_t *classref = *classref_ref;
 
-      uint32_t flags;
-      uint32_t instanceStart;
-      uint32_t instanceSize;
-      uint32_t reserved;
-      uint64_t ivarLayout;     // const uint8_t * (64-bit pointer)
-
-      errs() << "flags: " << classref->getDataPointer()->flags << "\n";
-      errs() << "instanceStart: " << classref->getDataPointer()->instanceStart << "\n";
-      errs() << "instanceSize: " << classref->getDataPointer()->instanceSize << "\n";
-      errs() << "reserved: " << classref->getDataPointer()->reserved << "\n";
-      errs() << "ivarLayout: " << classref->getDataPointer()->ivarLayout << "\n";
-
       errs() << "Is Swift: " << classref->isSwift() << "\n";
       errs() << "Is Fast data mask: " << classref->isFastDataMask() << "\n";
 
       Class runtimeClass = pair.second;
+      here_swift_class_t *swiftClassRuntimeRef = (here_swift_class_t *)runtimeClass;
+      here_swift_class_t *correctSwiftClassRuntimeRef = (here_swift_class_t *)objc_getClass("BinarySearchTestCorrect");
+
+      class_ro64_t *oldRO = (class_ro64_t *)classref->getDataPointer();
+      class_ro64_t *correctSwiftClassRO = correctSwiftClassRuntimeRef->data()->ro;
+      class_ro64_t *runtimeRO = (class_ro64_t *)classref->getDataPointer();
+
+      here_class_rw_t *correctRW = correctSwiftClassRuntimeRef->data();
+      here_class_rw_t *runtimeRW = swiftClassRuntimeRef->data();
+//      swiftClassRW->ro->weakIvarLayout
 //      assert(class_isMetaClass(runtimeClass) == false);
 
+//      classrefRO->flags = 0;
+
+//      runtimeRW->ro = oldRO;
+
+//      swiftClassRW->flags = 0;
       class64_t *classRegisteredRef = (class64_t *)pair.second;
       errs() << "Is Swift Registered: " << classRegisteredRef->isSwift() << "\n";
       errs() << "Is Swift Registered fast data mask: " << classRegisteredRef->isFastDataMask() << "\n";
@@ -469,7 +517,7 @@ mull::objc::Runtime::parsePropertyAttributes(const char *const attributesStr,
 //      here_objc_class *oldClsLL = (here_objc_class *)classref;
 
 //      classref->isa = NULL;
-      *classref_ref = ((class64_t *)runtimeClass);
+//      *classref_ref = ((class64_t *)runtimeClass);
 //      *classref_ref = ((class64_t *)runtimeClass);
 //      *classref = *((class64_t *)runtimeClass);
 //      classref->getDataPointer()->flags = 0x184;
@@ -481,8 +529,8 @@ mull::objc::Runtime::parsePropertyAttributes(const char *const attributesStr,
 //      classref->cache = NULL;
 #define RO_IS_ARC             (1<<7)
 
-      classref->isa = ((class64_t *)runtimeClass)->isa;
-      classref->superclass = ((class64_t *)runtimeClass)->superclass;
+//      classref->isa = ((class64_t *)runtimeClass)->isa;
+//      classref->superclass = ((class64_t *)runtimeClass)->superclass;
 
 //      classref->data = ((here_objc_class *)runtimeClass)->data()->ro;
 //      classref->data->flags |= RO_IS_ARC;
@@ -497,7 +545,7 @@ mull::objc::Runtime::parsePropertyAttributes(const char *const attributesStr,
       errs() << "old class pointers: " << (void *)&classref << " / " << (void *)classref << "\n";
       errs() << "new class pointers: " << (void *)runtimeClass << " / " << (void *)classref << "\n";
 
-      Class classObjCRef = (Class)classref;
+//      Class classObjCRef = (Class)classref;
 //      __unused id _ = objc_msgSend(classObjCRef, sel_registerName("description"));
 
 //      id instance = objc_msgSend(objc_msgSend(runtimeClass, sel_registerName("alloc")), sel_registerName("description"));
@@ -507,7 +555,7 @@ mull::objc::Runtime::parsePropertyAttributes(const char *const attributesStr,
 //      objc_msgSend(bb, sel_registerName("description"));
 //      objc_msgSend(instance, sel_registerName("description"));
 
-      here_objc_class *registeredClassAsObjC = (here_objc_class *)runtimeClass;
+//      here_objc_class *registeredClassAsObjC = (here_objc_class *)runtimeClass;
 
 //      registeredClassAsObjC->data()->ro->baseMethods = classref->getDataPointer()->baseMethods;
 //      registeredClassAsObjC->data()->ro->instanceStart = classref->getDataPointer()->instanceStart;

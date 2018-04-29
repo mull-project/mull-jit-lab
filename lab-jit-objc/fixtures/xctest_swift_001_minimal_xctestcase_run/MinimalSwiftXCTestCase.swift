@@ -3,12 +3,12 @@ import SwiftTestCase
 
 /**
  Binary Search
- 
+
  Recursively splits the array in half until the value is found.
- 
+
  If there is more than one occurrence of the search key in the array, then
  there is no guarantee which one it finds.
- 
+
  Note: The array must be sorted!
  **/
 
@@ -32,7 +32,7 @@ public func binarySearch<T: Comparable>(_ a: [T], key: T, range: Range<Int>) -> 
 
 /**
  The iterative version of binary search.
- 
+
  Notice how similar these functions are. The difference is that this one
  uses a while loop, while the other calls itself recursively.
  **/
@@ -70,43 +70,4 @@ class BinarySearchTest: SwiftTestCase {
     XCTAssertNil(index)
   }
 
-  func testBinarySearch() {
-    for i in 1...100 {
-      var array = [Int]()
-      for number in 1...i {
-        array.append(number)
-      }
-      let randomIndex = Int(arc4random_uniform(UInt32(i)))
-      let testValue = array[randomIndex]
-
-      let index = binarySearch(array, key: testValue)
-      XCTAssertNotNil(index)
-      XCTAssertEqual(index!, randomIndex)
-      XCTAssertEqual(array[index!], testValue)
-    }
-  }
-
-  func testLowerBound() {
-    let index = binarySearch(searchList, key: 1)
-    XCTAssertNotNil(index)
-    XCTAssertEqual(index!, 0)
-    XCTAssertEqual(searchList[index!], 1)
-  }
-
-  func testUpperBound() {
-    let index = binarySearch(searchList, key: 500)
-    XCTAssertNotNil(index)
-    XCTAssertEqual(index!, 499)
-    XCTAssertEqual(searchList[index!], 500)
-  }
-
-  func testOutOfLowerBound() {
-    let index = binarySearch(searchList, key: 0)
-    XCTAssertNil(index)
-  }
-
-  func testOutOfUpperBound() {
-    let index = binarySearch(searchList, key: 501)
-    XCTAssertNil(index)
-  }
 }

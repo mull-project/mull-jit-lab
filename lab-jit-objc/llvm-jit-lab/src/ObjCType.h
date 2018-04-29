@@ -571,12 +571,12 @@ struct here_class_rw_t {
 
   method_array_t methods;
   property_array_t properties;
-//  protocol_array_t protocols;
-//
-//  Class firstSubclass;
-//  Class nextSiblingClass;
-//
-//  char *demangledName;
+  protocol_array_t protocols;
+
+  Class firstSubclass;
+  Class nextSiblingClass;
+
+  char *demangledName;
 
   //#if SUPPORT_INDEXED_ISA
   //    uint32_t index;
@@ -585,9 +585,9 @@ struct here_class_rw_t {
 struct class_data_bits_t {
 
   // Values are the FAST_ flags above.
-  uintptr_t bits;
 
 public:
+  uintptr_t bits;
 
   here_class_rw_t* data() {
     return (here_class_rw_t *)(bits & FAST_DATA_MASK);

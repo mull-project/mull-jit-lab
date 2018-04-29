@@ -104,46 +104,46 @@ static const char *const FixturesPath = "/opt/mull-jit-lab/lab-jit-objc/fixtures
 
 namespace SwiftDyLibPath {
   static const char *const Core =
-  "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftCore.dylib";
+  "/Applications/Xcode-9.2.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftCore.dylib";
   static const char *const Darwin =
-  "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftDarwin.dylib";
+  "/Applications/Xcode-9.2.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftDarwin.dylib";
   static const char *const ObjectiveC =
-  "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftObjectiveC.dylib";
+  "/Applications/Xcode-9.2.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftObjectiveC.dylib";
   static const char *const Dispatch =
-  "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftDispatch.dylib";
+  "/Applications/Xcode-9.2.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftDispatch.dylib";
   static const char *const CoreFoundation =
-  "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftCoreFoundation.dylib";
+  "/Applications/Xcode-9.2.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftCoreFoundation.dylib";
   static const char *const IOKit =
-  "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftIOKit.dylib";
+  "/Applications/Xcode-9.2.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftIOKit.dylib";
   static const char *const CoreGraphics =
-  "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftCoreGraphics.dylib";
+  "/Applications/Xcode-9.2.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftCoreGraphics.dylib";
 
-    //  -load=/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftFoundation.dylib
-    //  -load=/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftXPC.dylib
+    //  -load=/Applications/Xcode-9.2.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftFoundation.dylib
+    //  -load=/Applications/Xcode-9.2.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftXPC.dylib
 
   static const char *const Foundation =
-  "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftFoundation.dylib";
+  "/Applications/Xcode-9.2.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftFoundation.dylib";
   static const char *const CoreData =
-  "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftCoreData.dylib";
+  "/Applications/Xcode-9.2.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftCoreData.dylib";
 
   static const char *const XPC =
-  "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftXPC.dylib";
+  "/Applications/Xcode-9.2.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftXPC.dylib";
   static const char *const os =
-  "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftos.dylib";
+  "/Applications/Xcode-9.2.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftos.dylib";
   static const char *const Metal =
-  "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftMetal.dylib";
+  "/Applications/Xcode-9.2.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftMetal.dylib";
 
   static const char *const CoreImage =
-  "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftCoreImage.dylib";
+  "/Applications/Xcode-9.2.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftCoreImage.dylib";
   static const char *const QuartzCore =
-  "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftQuartzCore.dylib";
+  "/Applications/Xcode-9.2.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftQuartzCore.dylib";
   static const char *const AppKit =
-  "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftAppKit.dylib";
+  "/Applications/Xcode-9.2.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftAppKit.dylib";
 
   static const char *const XCTest =
-  "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftXCTest.dylib";
+  "/Applications/Xcode-9.2.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftXCTest.dylib";
   static const char *const SwiftOnoneSupport =
-  "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftSwiftOnoneSupport.dylib";
+  "/Applications/Xcode-9.2.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/libswiftSwiftOnoneSupport.dylib";
 
 
 }
@@ -207,13 +207,16 @@ TEST(XCTest_Swift, Test_001_Minimal) {
     "/System/Library/Frameworks/Foundation.framework/Versions/Current/Foundation"
   ));
   assert(!sys::DynamicLibrary::LoadLibraryPermanently(
-    "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks/XCTest.framework/XCTest"
+    "/Applications/Xcode-9.2.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks/XCTest.framework/XCTest"
   ));
   assert(!sys::DynamicLibrary::LoadLibraryPermanently(
     "/opt/CustomXCTestRunner/CustomXCTestRunner.dylib"
   ));
   loadSwiftLibrariesOrExit();
-  assert(dlopen("/opt/SwiftTestCase/Build/Products/Release/SwiftTestCase.framework/Versions/Current/SwiftTestCase", RTLD_NOW));
+  if (dlopen("/opt/SwiftTestCase/Build/Products/Release/SwiftTestCase.framework/Versions/Current/SwiftTestCase", RTLD_NOW) == nullptr) {
+    fprintf(stderr, "%s\n", dlerror());
+    exit(EXIT_FAILURE);
+  }
 
   Class correctBSTClazz = objc_getClass("BinarySearchTestCorrect");
   assert(correctBSTClazz);
@@ -234,11 +237,11 @@ TEST(XCTest_Swift, Test_001_Minimal) {
   auto objcModule = loadModuleAtPath(fixturePath, llvmContext);
   assert(objcModule);
 
-  char runnerBitcodeFixturePath[255];
-  snprintf(runnerBitcodeFixturePath,
-           sizeof(runnerBitcodeFixturePath), "%s/%s", "/opt/CustomXCTestRunner", "CustomXCTestRunner.bc");
-  auto runnerBitcodeModule = loadModuleAtPath(runnerBitcodeFixturePath, llvmContext);
-  assert(runnerBitcodeModule);
+//  char runnerBitcodeFixturePath[255];
+//  snprintf(runnerBitcodeFixturePath,
+//           sizeof(runnerBitcodeFixturePath), "%s/%s", "/opt/CustomXCTestRunner", "CustomXCTestRunner.bc");
+//  auto runnerBitcodeModule = loadModuleAtPath(runnerBitcodeFixturePath, llvmContext);
+//  assert(runnerBitcodeModule);
 
   std::vector<llvm::Function *> staticCtors = getStaticConstructors(objcModule.get());
   errs() << "static constructors: " << staticCtors.size() << "\n";

@@ -7,7 +7,7 @@ set(sources
   Tests/ObjCTest.cpp
   Tests/SandboxTest.cpp
   Tests/XCTestObjCTest.cpp
-  Tests/XCTestSwiftTest.cpp
+  Tests/XCTestSwiftTest.mm
   Tests/TestHelpers.cpp
 )
 
