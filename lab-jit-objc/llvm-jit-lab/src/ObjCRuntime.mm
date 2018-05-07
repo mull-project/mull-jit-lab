@@ -15,7 +15,7 @@ namespace mull { namespace objc {
 mull::objc::Runtime::~Runtime() {
   for (const Class &clz: runtimeClasses) {
     errs() << "disposing class: " << class_getName(clz) << "\n";
-    assert(objc_classIsRegistered(clz));
+    //assert(objc_classIsRegistered(clz));
 
     objc_disposeClassPair(clz);
 

@@ -1,22 +1,32 @@
 #include "ObjCEnabledMemoryManager.h"
 
-#include <gtest/gtest.h>
+#include "ObjCResolver.h"
+#include "ObjCRuntime.h"
+#include "TestHelpers.h"
 
+#include <llvm/ExecutionEngine/ExecutionEngine.h>
 #include <llvm/ExecutionEngine/Orc/CompileUtils.h>
-#include <llvm/ExecutionEngine/Orc/ObjectLinkingLayer.h>
+#include <llvm/ExecutionEngine/Orc/RTDyldObjectLinkingLayer.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/Support/DynamicLibrary.h>
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Support/TargetSelect.h>
 
-#include "ObjCResolver.h"
-#include "ObjCRuntime.h"
-#include "TestHelpers.h"
+#include <gtest/gtest.h>
 
 using namespace llvm;
 using namespace llvm::orc;
 
 static const char *const FixturesPath = "/opt/mull-jit-lab/lab-jit-objc/fixtures/bitcode";
+
+static
+llvm::orc::RTDyldObjectLinkingLayer::MemoryManagerGetter getMemoryManager() {
+  llvm::orc::RTDyldObjectLinkingLayer::MemoryManagerGetter GetMemMgr =
+  []() {
+    return std::make_shared<ObjCEnabledMemoryManager>();
+  };
+  return GetMemMgr;
+}
 
 TEST(XCTest_ObjC, Test_001_Minimal) {
   // These lines are needed for TargetMachine TM to be created correctly.
@@ -40,33 +50,33 @@ TEST(XCTest_ObjC, Test_001_Minimal) {
 
   char fixturePath[255];
   snprintf(fixturePath, sizeof(fixturePath), "%s/%s", FixturesPath, "xctest_objc_001_minimal_xctestcase_run.bc");
-
   auto objcModule = loadModuleAtPath(fixturePath, llvmContext);
 
-  ObjectLinkingLayer<> ObjLayer;
+  RTDyldObjectLinkingLayer objectLayer(getMemoryManager());
 
   std::unique_ptr<TargetMachine> TM(
-    EngineBuilder().selectTarget(llvm::Triple(),
-                                 "",
-                                 "",
-                                 SmallVector<std::string, 1>())
-  );
+                                    EngineBuilder().selectTarget(llvm::Triple(),
+                                                                 "",
+                                                                 "",
+                                                                 SmallVector<std::string, 1>())
+                                    );
 
   assert(TM.get());
 
   SimpleCompiler compiler(*TM);
 
-  auto objcCompiledModule = compiler(*objcModule);
+  std::shared_ptr<ObjCResolver> objcResolver = std::make_shared<ObjCResolver>();
 
+  RTDyldObjectLinkingLayer::ObjectPtr objcCompiledModule =
+  std::make_shared<object::OwningBinary<object::ObjectFile>>(compiler(*objcModule));
+  assert(objcCompiledModule);
+  assert(objcCompiledModule->getBinary());
+  assert(objcCompiledModule->getBinary()->isMachO());
   std::vector<object::ObjectFile*> objcSet;
-  objcSet.push_back(objcCompiledModule.getBinary());
+  auto objcHandle = objectLayer.addObject(objcCompiledModule, objcResolver).get();
+  assert(objcHandle->get());
 
-  ObjCResolver objcResolver;
-  auto objcHandle = ObjLayer.addObjectSet(std::move(objcSet),
-                                          make_unique<ObjCEnabledMemoryManager>(),
-                                          &objcResolver);
-
-  ObjLayer.emitAndFinalize(objcHandle);
+  Error err = objectLayer.emitAndFinalize(objcHandle);
 
   void *runnerPtr = sys::DynamicLibrary::SearchForAddressOfSymbol("CustomXCTestRunnerRun");
   auto runnerFPtr = ((int (*)(void))runnerPtr);
