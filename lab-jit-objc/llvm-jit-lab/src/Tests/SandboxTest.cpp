@@ -3,7 +3,7 @@
 #include <gtest/gtest.h>
 
 #include <llvm/ExecutionEngine/Orc/CompileUtils.h>
-#include <llvm/ExecutionEngine/Orc/ObjectLinkingLayer.h>
+#include <llvm/ExecutionEngine/Orc/RTDyldObjectLinkingLayer.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/Support/DynamicLibrary.h>
 #include <llvm/Support/raw_ostream.h>
@@ -43,32 +43,4 @@ TEST(DISABLED_XCTest_ObjC, Test_001_Minimal) {
 
   auto objcModule = loadModuleAtPath(fixturePath, llvmContext);
 
-  ObjectLinkingLayer<> ObjLayer;
-
-  std::unique_ptr<TargetMachine> TM(
-    EngineBuilder().selectTarget(llvm::Triple(),
-                                 "",
-                                 "",
-                                 SmallVector<std::string, 1>())
-  );
-
-  assert(TM.get());
-
-  SimpleCompiler compiler(*TM);
-
-  auto objcCompiledModule = compiler(*objcModule);
-
-  std::vector<object::ObjectFile*> objcSet;
-  objcSet.push_back(objcCompiledModule.getBinary());
-
-  ObjCResolver objcResolver;
-  auto objcHandle = ObjLayer.addObjectSet(std::move(objcSet),
-                                          make_unique<ObjCEnabledMemoryManager>(),
-                                          &objcResolver);
-
-  ObjLayer.emitAndFinalize(objcHandle);
-
-  void *runnerPtr = sys::DynamicLibrary::SearchForAddressOfSymbol("CustomXCTestRunnerRun");
-  auto runnerFPtr = ((int (*)(void))runnerPtr);
-  runnerFPtr();
 }

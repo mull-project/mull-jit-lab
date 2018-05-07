@@ -1,22 +1,32 @@
 #include "ObjCEnabledMemoryManager.h"
 
-#include <gtest/gtest.h>
+#include "ObjCRuntime.h"
+#include "ObjCResolver.h"
+#include "TestHelpers.h"
 
+#include <llvm/ExecutionEngine/ExecutionEngine.h>
 #include <llvm/ExecutionEngine/Orc/CompileUtils.h>
-#include <llvm/ExecutionEngine/Orc/ObjectLinkingLayer.h>
+#include <llvm/ExecutionEngine/Orc/RTDyldObjectLinkingLayer.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/Support/DynamicLibrary.h>
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Support/TargetSelect.h>
 
-#include "ObjCRuntime.h"
-#include "ObjCResolver.h"
-#include "TestHelpers.h"
+#include <gtest/gtest.h>
 
 using namespace llvm;
 using namespace llvm::orc;
 
 const char *const FixturesPath = "/opt/mull-jit-lab/lab-jit-objc/fixtures/bitcode";
+
+static
+llvm::orc::RTDyldObjectLinkingLayer::MemoryManagerGetter getMemoryManager() {
+  llvm::orc::RTDyldObjectLinkingLayer::MemoryManagerGetter GetMemMgr =
+  []() {
+    return std::make_shared<ObjCEnabledMemoryManager>();
+  };
+  return GetMemMgr;
+}
 
 TEST(LLVMJIT, Test001_BasicTest) {
   // These lines are needed for TargetMachine TM to be created correctly.
@@ -37,32 +47,36 @@ TEST(LLVMJIT, Test001_BasicTest) {
 
   auto objcModule = loadModuleAtPath(fixturePath, llvmContext);
 
-  ObjectLinkingLayer<> ObjLayer;
+  RTDyldObjectLinkingLayer objectLayer(getMemoryManager());
 
   std::unique_ptr<TargetMachine> TM(
-    EngineBuilder().selectTarget(llvm::Triple(), "", "", SmallVector<std::string, 1>()));
+                                    EngineBuilder().selectTarget(llvm::Triple(),
+                                                                 "",
+                                                                 "",
+                                                                 SmallVector<std::string, 1>())
+                                    );
 
   assert(TM.get());
 
   SimpleCompiler compiler(*TM);
 
-  auto objcCompiledModule = compiler(*objcModule);
+  std::shared_ptr<ObjCResolver> objcResolver = std::make_shared<ObjCResolver>();
 
-  std::vector<object::ObjectFile*> objcSet;
-  objcSet.push_back(objcCompiledModule.getBinary());
+  RTDyldObjectLinkingLayer::ObjectPtr objcCompiledModule =
+    std::make_shared<object::OwningBinary<object::ObjectFile>>(compiler(*objcModule));
+  assert(objcCompiledModule);
+  assert(objcCompiledModule->getBinary());
+  assert(objcCompiledModule->getBinary()->isMachO());
+  auto objcHandle = objectLayer.addObject(objcCompiledModule, objcResolver).get();
+  assert(objcHandle->get());
 
-  ObjCResolver objcResolver;
-  auto objcHandle = ObjLayer.addObjectSet(std::move(objcSet),
-                                          make_unique<ObjCEnabledMemoryManager>(),
-                                          &objcResolver);
-
-  ObjLayer.emitAndFinalize(objcHandle);
+  Error err = objectLayer.emitAndFinalize(objcHandle);
 
   std::string functionName = "_run";
-  JITSymbol symbol = ObjLayer.findSymbol(functionName, false);
+  JITSymbol symbol = objectLayer.findSymbol(functionName, false);
 
   void *fpointer =
-  reinterpret_cast<void *>(static_cast<uintptr_t>(symbol.getAddress()));
+    reinterpret_cast<void *>(static_cast<uintptr_t>(symbol.getAddress().get()));
 
   if (fpointer == nullptr) {
     errs() << "CustomTestRunner> Can't find pointer to function: "
@@ -95,32 +109,36 @@ TEST(LLVMJIT, Test002_ClassMethodCall) {
 
   auto objcModule = loadModuleAtPath(fixturePath, llvmContext);
 
-  ObjectLinkingLayer<> ObjLayer;
+  RTDyldObjectLinkingLayer objectLayer(getMemoryManager());
 
   std::unique_ptr<TargetMachine> TM(
-                                    EngineBuilder().selectTarget(llvm::Triple(), "", "", SmallVector<std::string, 1>()));
+                                    EngineBuilder().selectTarget(llvm::Triple(),
+                                                                 "",
+                                                                 "",
+                                                                 SmallVector<std::string, 1>())
+                                    );
 
   assert(TM.get());
 
   SimpleCompiler compiler(*TM);
 
-  auto objcCompiledModule = compiler(*objcModule);
+  std::shared_ptr<ObjCResolver> objcResolver = std::make_shared<ObjCResolver>();
 
-  std::vector<object::ObjectFile*> objcSet;
-  objcSet.push_back(objcCompiledModule.getBinary());
+  RTDyldObjectLinkingLayer::ObjectPtr objcCompiledModule =
+  std::make_shared<object::OwningBinary<object::ObjectFile>>(compiler(*objcModule));
+  assert(objcCompiledModule);
+  assert(objcCompiledModule->getBinary());
+  assert(objcCompiledModule->getBinary()->isMachO());
+  auto objcHandle = objectLayer.addObject(objcCompiledModule, objcResolver).get();
+  assert(objcHandle->get());
 
-  ObjCResolver objcResolver;
-  auto objcHandle = ObjLayer.addObjectSet(std::move(objcSet),
-                                          make_unique<ObjCEnabledMemoryManager>(),
-                                          &objcResolver);
-
-  ObjLayer.emitAndFinalize(objcHandle);
+  Error err = objectLayer.emitAndFinalize(objcHandle);
 
   std::string functionName = "_run";
-  JITSymbol symbol = ObjLayer.findSymbol(functionName, false);
+  JITSymbol symbol = objectLayer.findSymbol(functionName, false);
 
   void *fpointer =
-  reinterpret_cast<void *>(static_cast<uintptr_t>(symbol.getAddress()));
+  reinterpret_cast<void *>(static_cast<uintptr_t>(symbol.getAddress().get()));
 
   if (fpointer == nullptr) {
     errs() << "CustomTestRunner> Can't find pointer to function: "
@@ -153,32 +171,36 @@ TEST(LLVMJIT, Test003_CallingASuperMethodOnInstance) {
 
   auto objcModule = loadModuleAtPath(fixturePath, llvmContext);
 
-  ObjectLinkingLayer<> ObjLayer;
+  RTDyldObjectLinkingLayer objectLayer(getMemoryManager());
 
   std::unique_ptr<TargetMachine> TM(
-                                    EngineBuilder().selectTarget(llvm::Triple(), "", "", SmallVector<std::string, 1>()));
+                                    EngineBuilder().selectTarget(llvm::Triple(),
+                                                                 "",
+                                                                 "",
+                                                                 SmallVector<std::string, 1>())
+                                    );
 
   assert(TM.get());
 
   SimpleCompiler compiler(*TM);
 
-  auto objcCompiledModule = compiler(*objcModule);
+  std::shared_ptr<ObjCResolver> objcResolver = std::make_shared<ObjCResolver>();
 
-  std::vector<object::ObjectFile*> objcSet;
-  objcSet.push_back(objcCompiledModule.getBinary());
+  RTDyldObjectLinkingLayer::ObjectPtr objcCompiledModule =
+  std::make_shared<object::OwningBinary<object::ObjectFile>>(compiler(*objcModule));
+  assert(objcCompiledModule);
+  assert(objcCompiledModule->getBinary());
+  assert(objcCompiledModule->getBinary()->isMachO());
+  auto objcHandle = objectLayer.addObject(objcCompiledModule, objcResolver).get();
+  assert(objcHandle->get());
 
-  ObjCResolver objcResolver;
-  auto objcHandle = ObjLayer.addObjectSet(std::move(objcSet),
-                                          make_unique<ObjCEnabledMemoryManager>(),
-                                          &objcResolver);
-
-  ObjLayer.emitAndFinalize(objcHandle);
+  Error err = objectLayer.emitAndFinalize(objcHandle);
 
   std::string functionName = "_run";
-  JITSymbol symbol = ObjLayer.findSymbol(functionName, false);
+  JITSymbol symbol = objectLayer.findSymbol(functionName, false);
 
   void *fpointer =
-  reinterpret_cast<void *>(static_cast<uintptr_t>(symbol.getAddress()));
+  reinterpret_cast<void *>(static_cast<uintptr_t>(symbol.getAddress().get()));
 
   if (fpointer == nullptr) {
     errs() << "CustomTestRunner> Can't find pointer to function: "
@@ -211,32 +233,36 @@ TEST(LLVMJIT, Test004_CallingASuperMethodOnClass) {
 
   auto objcModule = loadModuleAtPath(fixturePath, llvmContext);
 
-  ObjectLinkingLayer<> ObjLayer;
+  RTDyldObjectLinkingLayer objectLayer(getMemoryManager());
 
   std::unique_ptr<TargetMachine> TM(
-                                    EngineBuilder().selectTarget(llvm::Triple(), "", "", SmallVector<std::string, 1>()));
+                                    EngineBuilder().selectTarget(llvm::Triple(),
+                                                                 "",
+                                                                 "",
+                                                                 SmallVector<std::string, 1>())
+                                    );
 
   assert(TM.get());
 
   SimpleCompiler compiler(*TM);
 
-  auto objcCompiledModule = compiler(*objcModule);
+  std::shared_ptr<ObjCResolver> objcResolver = std::make_shared<ObjCResolver>();
 
-  std::vector<object::ObjectFile*> objcSet;
-  objcSet.push_back(objcCompiledModule.getBinary());
+  RTDyldObjectLinkingLayer::ObjectPtr objcCompiledModule =
+  std::make_shared<object::OwningBinary<object::ObjectFile>>(compiler(*objcModule));
+  assert(objcCompiledModule);
+  assert(objcCompiledModule->getBinary());
+  assert(objcCompiledModule->getBinary()->isMachO());
+  auto objcHandle = objectLayer.addObject(objcCompiledModule, objcResolver).get();
+  assert(objcHandle->get());
 
-  ObjCResolver objcResolver;
-  auto objcHandle = ObjLayer.addObjectSet(std::move(objcSet),
-                                          make_unique<ObjCEnabledMemoryManager>(),
-                                          &objcResolver);
-
-  ObjLayer.emitAndFinalize(objcHandle);
+  Error err = objectLayer.emitAndFinalize(objcHandle);
 
   std::string functionName = "_run";
-  JITSymbol symbol = ObjLayer.findSymbol(functionName, false);
+  JITSymbol symbol = objectLayer.findSymbol(functionName, false);
 
   void *fpointer =
-  reinterpret_cast<void *>(static_cast<uintptr_t>(symbol.getAddress()));
+  reinterpret_cast<void *>(static_cast<uintptr_t>(symbol.getAddress().get()));
 
   if (fpointer == nullptr) {
     errs() << "CustomTestRunner> Can't find pointer to function: "
@@ -269,32 +295,36 @@ TEST(LLVMJIT, Test005_IvarsOfClassAndSuperclass) {
 
   auto objcModule = loadModuleAtPath(fixturePath, llvmContext);
 
-  ObjectLinkingLayer<> ObjLayer;
+  RTDyldObjectLinkingLayer objectLayer(getMemoryManager());
 
   std::unique_ptr<TargetMachine> TM(
-    EngineBuilder().selectTarget(llvm::Triple(), "", "", SmallVector<std::string, 1>()));
+                                    EngineBuilder().selectTarget(llvm::Triple(),
+                                                                 "",
+                                                                 "",
+                                                                 SmallVector<std::string, 1>())
+                                    );
 
   assert(TM.get());
 
   SimpleCompiler compiler(*TM);
 
-  auto objcCompiledModule = compiler(*objcModule);
+  std::shared_ptr<ObjCResolver> objcResolver = std::make_shared<ObjCResolver>();
 
-  std::vector<object::ObjectFile*> objcSet;
-  objcSet.push_back(objcCompiledModule.getBinary());
+  RTDyldObjectLinkingLayer::ObjectPtr objcCompiledModule =
+  std::make_shared<object::OwningBinary<object::ObjectFile>>(compiler(*objcModule));
+  assert(objcCompiledModule);
+  assert(objcCompiledModule->getBinary());
+  assert(objcCompiledModule->getBinary()->isMachO());
+  auto objcHandle = objectLayer.addObject(objcCompiledModule, objcResolver).get();
+  assert(objcHandle->get());
 
-  ObjCResolver objcResolver;
-  auto objcHandle = ObjLayer.addObjectSet(std::move(objcSet),
-                                          make_unique<ObjCEnabledMemoryManager>(),
-                                          &objcResolver);
-
-  ObjLayer.emitAndFinalize(objcHandle);
+  Error err = objectLayer.emitAndFinalize(objcHandle);
 
   std::string functionName = "_run";
-  JITSymbol symbol = ObjLayer.findSymbol(functionName, false);
+  JITSymbol symbol = objectLayer.findSymbol(functionName, false);
 
   void *fpointer =
-  reinterpret_cast<void *>(static_cast<uintptr_t>(symbol.getAddress()));
+  reinterpret_cast<void *>(static_cast<uintptr_t>(symbol.getAddress().get()));
 
   if (fpointer == nullptr) {
     errs() << "CustomTestRunner> Can't find pointer to function: "
@@ -327,32 +357,36 @@ TEST(LLVMJIT, Test006_PropertiesOfClassAndSuperclass) {
 
   auto objcModule = loadModuleAtPath(fixturePath, llvmContext);
 
-  ObjectLinkingLayer<> ObjLayer;
+  RTDyldObjectLinkingLayer objectLayer(getMemoryManager());
 
   std::unique_ptr<TargetMachine> TM(
-                                    EngineBuilder().selectTarget(llvm::Triple(), "", "", SmallVector<std::string, 1>()));
+                                    EngineBuilder().selectTarget(llvm::Triple(),
+                                                                 "",
+                                                                 "",
+                                                                 SmallVector<std::string, 1>())
+                                    );
 
   assert(TM.get());
 
   SimpleCompiler compiler(*TM);
 
-  auto objcCompiledModule = compiler(*objcModule);
+  std::shared_ptr<ObjCResolver> objcResolver = std::make_shared<ObjCResolver>();
 
-  std::vector<object::ObjectFile*> objcSet;
-  objcSet.push_back(objcCompiledModule.getBinary());
+  RTDyldObjectLinkingLayer::ObjectPtr objcCompiledModule =
+  std::make_shared<object::OwningBinary<object::ObjectFile>>(compiler(*objcModule));
+  assert(objcCompiledModule);
+  assert(objcCompiledModule->getBinary());
+  assert(objcCompiledModule->getBinary()->isMachO());
+  auto objcHandle = objectLayer.addObject(objcCompiledModule, objcResolver).get();
+  assert(objcHandle->get());
 
-  ObjCResolver objcResolver;
-  auto objcHandle = ObjLayer.addObjectSet(std::move(objcSet),
-                                          make_unique<ObjCEnabledMemoryManager>(),
-                                          &objcResolver);
-
-  ObjLayer.emitAndFinalize(objcHandle);
+  Error err = objectLayer.emitAndFinalize(objcHandle);
 
   std::string functionName = "_run";
-  JITSymbol symbol = ObjLayer.findSymbol(functionName, false);
+  JITSymbol symbol = objectLayer.findSymbol(functionName, false);
 
   void *fpointer =
-  reinterpret_cast<void *>(static_cast<uintptr_t>(symbol.getAddress()));
+  reinterpret_cast<void *>(static_cast<uintptr_t>(symbol.getAddress().get()));
 
   if (fpointer == nullptr) {
     errs() << "CustomTestRunner> Can't find pointer to function: "

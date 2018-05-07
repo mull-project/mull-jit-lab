@@ -1,13 +1,25 @@
 #include "ObjCRuntime.h"
 
+#include "DebugUtils.h"
 #include "ObjCRuntimeHelpers.h"
+
+#include <objc/message.h>
+
+#include <iostream>
+#include <inttypes.h>
+
+using namespace objc;
 
 namespace mull { namespace objc {
 
 mull::objc::Runtime::~Runtime() {
-  for (Class &clz: runtimeClasses) {
+  for (const Class &clz: runtimeClasses) {
     errs() << "disposing class: " << class_getName(clz) << "\n";
+    //assert(objc_classIsRegistered(clz));
+
     objc_disposeClassPair(clz);
+
+    assert(objc_classIsRegistered(clz) == false);
   }
 }
 
@@ -32,7 +44,7 @@ void mull::objc::Runtime::registerSelectors(void *selRefsSectionPtr,
 
 void mull::objc::Runtime::addClassesFromSection(void *sectionPtr,
                                                 uintptr_t sectionSize) {
-  errs() << "mull::objc::Runtime> adding class_t for later registration: "
+  errs() << "mull::objc::Runtime> adding section for later registration: "
          << sectionPtr << ", " << sectionSize << "\n";
 
   class64_t **classes = (class64_t **)sectionPtr;
@@ -40,11 +52,13 @@ void mull::objc::Runtime::addClassesFromSection(void *sectionPtr,
   uint32_t count = sectionSize / 8;
   // 16 is "8 + alignment" (don't know yet what alignment is for).
   for (uintptr_t i = 0; i < count / 2; i += 1) {
-    class64_t *const clzPointer = classes[i];
-    errs() << "mull::objc::Runtime> adding class: "
+    class64_t **clzPointerRef = &classes[i];
+    class64_t *clzPointer = *clzPointerRef;
+
+    errs() << "mull::objc::Runtime> adding class for registration: "
            << clzPointer->getDataPointer()->getName() << "\n";
 
-    classesToRegister.push(&classes[i]);
+    classesToRegister.push(clzPointerRef);
   }
 }
 
@@ -61,12 +75,12 @@ void mull::objc::Runtime::addClassesFromClassRefsSection(void *sectionPtr,
     assert(className);
     errs() << "Considering " << className << "\n";
 
-    Class newClz = RuntimeHelpers::class_getClassByName(className);
+    Class newClz = objc_getRequiredClass(className);
     assert(class_isMetaClass(newClz) == false);
     errs() << "\tclass has address: " << (void *)newClz << "\n";
 
     if (*classrefPtr != newClz) {
-      *classrefPtr = objc_getClass(className);
+      *classrefPtr = objc_getRequiredClass(className);
     }
   }
 }
@@ -108,6 +122,7 @@ void mull::objc::Runtime::addClassesFromSuperclassRefsSection(void *sectionPtr,
       }
     }
 
+    assert(refType != 0);
     const char *className;
     if (ref == NULL) {
       className = object_getClassName(classref);
@@ -116,9 +131,19 @@ void mull::objc::Runtime::addClassesFromSuperclassRefsSection(void *sectionPtr,
     } else {
       className = ref->getDataPointer()->getName();
     }
+    here_objc_class *objcClass = (here_objc_class *)classref;
+    if (refType == 1 && runtimeClasses.count(classref) > 0) {
+      className = objcClass->data()->ro->name;
+    }
+    else if (refType == 2) {
+      Class classForMetaClass = objc_getClass(object_getClassName(classref));
+      assert(classForMetaClass);
+      className = objcClass->data()->ro->name;
+    }
+    assert(className);
 
     errs() << "Considering " << className << "\n";
-    Class newClz = RuntimeHelpers::class_getClassByName(className);
+    Class newClz = objc_getClass(className);
 
     assert(refType != 0);
     if (refType == 2) {
@@ -145,7 +170,7 @@ void mull::objc::Runtime::registerClasses() {
 
     class64_t *superClz64 = classref->getSuperclassPointer();
     Class superClz = (Class)superClz64;
-    if (RuntimeHelpers::class_isRegistered(superClz) == false) {
+    if (objc_classIsRegistered(superClz) == false) {
       const char *superclzName = superClz64->getDataPointer()->getName();
       if (Class registeredSuperClz = objc_getClass(superclzName)) {
         errs() << "registerClasses() " << "superclass is registered" << "\n";
@@ -158,202 +183,58 @@ void mull::objc::Runtime::registerClasses() {
       }
     }
 
-    errs() << "registerClasses() " << "superclass is registered" << "\n";
-//    errs() << classref->getDebugDescription() << "\n";
+    errs() << "registerClasses() "
+           << "superclass is registered for class: " << classref->getDataPointer()->getName()
+           << "\n";
+    //errs() << classref->getDebugDescription() << "\n";
 
     assert(superClz);
 
+    errs() << classref->getDebugDescription() << "\n";
+
     Class runtimeClass = registerOneClass(classrefPtr, superClz);
-    runtimeClasses.push_back(runtimeClass);
+    assert(objc_classIsRegistered(runtimeClass));
 
-    oldAndNewClassesMap.push_back(std::pair<class64_t *,Class>(classref, runtimeClass));
+    runtimeClasses.insert(runtimeClass);
 
-//    errs() << classref->getDebugDescription() << "\n";
+    oldAndNewClassesMap.push_back(std::pair<class64_t **, Class>(classrefPtr, runtimeClass));
   }
 
   assert(classesToRegister.empty());
 }
 
+extern "C" Class objc_readClassPair(Class bits, const struct objc_image_info *info);
+
 Class mull::objc::Runtime::registerOneClass(class64_t **classrefPtr,
                                             Class superclass) {
+
   class64_t *classref = *classrefPtr;
   class64_t *metaclassRef = classref->getIsaPointer();
+
+  assert(strlen(classref->getDataPointer()->name) > 0);
+  printf("registerOneClass: %s \n", classref->getDataPointer()->name);
+  printf("\t" "source ptr: 0x%016" PRIxPTR "\n", (uintptr_t)classref);
+  printf("0x%016" PRIXPTR "\n", (uintptr_t) classref);
 
   classRefs.push_back(classref);
   metaclassRefs.push_back(metaclassRef);
 
-  const method_list64_t *metaClzMethodListPtr =
-    metaclassRef->getDataPointer()->getMethodListPtr();
+  assert(objc_getClass(classref->getDataPointer()->name) == NULL);
 
-  Class clz =
-    objc_allocateClassPair(superclass,
-                           classref->getDataPointer()->getName(),
-                           0);
+  Class cllll = objc_readClassPair((Class)classref, NULL);
+  assert(cllll);
 
-  /* INSTANCE METHODS */
-  const method_list64_t *clzMethodListPtr = classref->getDataPointer()->getMethodListPtr();
-  if (clzMethodListPtr) {
-    const method64_t *methods = (const method64_t *)clzMethodListPtr->getFirstMethodPointer();
+  here_objc_class *runtimeCllll = (here_swift_class_t *)cllll;
+  here_objc_class *runtimeMetaCllll = (here_objc_class *)runtimeCllll->ISA();
 
-    for (uint32_t i = 0; i < clzMethodListPtr->count; i++) {
-      const method64_t *methodPtr = methods + i;
+#define RW_CONSTRUCTING       (1<<26)
+  here_class_rw_t *sourceClassData = runtimeCllll->data();
+  here_class_rw_t *sourceMetaclassData = (here_class_rw_t *)runtimeMetaCllll->data();
+  sourceClassData->flags |= RW_CONSTRUCTING;
+  sourceMetaclassData->flags |= RW_CONSTRUCTING;
+  objc_registerClassPair(cllll);
 
-      errs() << methodPtr->getDebugDescription();
-
-      IMP imp = (IMP)methodPtr->imp;
-      BOOL added = class_addMethod(clz,
-                                   sel_registerName(sel_getName(methodPtr->name)),
-                                   (IMP)imp,
-                                   (const char *)methodPtr->types);
-      assert(added);
-    }
-  }
-
-  /* IVARS */
-  const ivar_list64_t *clzIvarListPtr = classref->getDataPointer()->ivars;
-  if (clzIvarListPtr) {
-    const ivar64_t *ivars = (const ivar64_t *)(clzIvarListPtr + 1);
-
-    for (uint32_t i = 0; i < clzIvarListPtr->count; i++) {
-      const ivar64_t *ivar = ivars + i;
-
-      // TODO: Can be dangerous: we are passing ivar->type which is something
-      // like NSString instead of @encode(id) which is "@".
-      // This is probably needed for runtime introspection.
-      class_addIvar(clz, ivar->name, ivar->size, log2(ivar->size), ivar->type);
-    }
-  }
-
-  /* PROPERTIES */
-  const objc_property_list64 *propertyListPtr = classref->getDataPointer()->baseProperties;
-  if (propertyListPtr) {
-    const objc_property64 *properties = (const objc_property64 *)(propertyListPtr + 1);
-
-    objc_property_attribute_t attributesBuf[10];
-    memset(attributesBuf, 0, 10 * sizeof(objc_property_attribute_t));
-
-    char stringStorage[1024];
-
-    for (uint32_t i = 0; i < propertyListPtr->count; i++) {
-      const objc_property64 *property = properties + i;
-
-      errs() << "Property: " << property->name << "\n";
-
-      size_t attributeCount = 0;
-      parsePropertyAttributes(property->attributes,
-                              stringStorage,
-                              attributesBuf,
-                              &attributeCount);
-      class_addProperty(clz, property->name, attributesBuf, attributeCount);
-    }
-  }
-  objc_registerClassPair(clz);
-
-  /* CLASS REGISTRATION */
-  Class metaClz = objc_getMetaClass(class_getName(clz));
-
-  errs() << "+++ Registering Class: " << object_getClassName(clz)
-  << " (" << clz << ")" << "\n";
-
-  assert(RuntimeHelpers::class_isRegistered(clz));
-
-  /* METACLASS METHODS REGISTRATION */
-  if (metaClzMethodListPtr) {
-    const method64_t *firstMetaclassMethodPtr = metaClzMethodListPtr->getFirstMethodPointer();
-
-    errs() << "Dumping metaclass' methods" << "\n";
-    for (uint32_t i = 0; i < metaClzMethodListPtr->count; i++) {
-      const method64_t *methodPtr = firstMetaclassMethodPtr + i;
-
-      errs() << methodPtr->getDebugDescription();
-
-      auto imp = (IMP)methodPtr->imp;
-      class_addMethod(metaClz,
-                      sel_registerName(sel_getName(methodPtr->name)),
-                      imp,
-                      (const char *)methodPtr->types);
-    }
-  }
-
-  Class registeredMetaClass = objc_getMetaClass(classref->getDataPointer()->getName());
-  assert(metaClz == registeredMetaClass);
-
-  RuntimeHelpers::class_dumpMethods(clz);
-  RuntimeHelpers::class_dumpMethods(metaClz);
-
-  return clz;
+  return cllll;
 }
 
-void
-mull::objc::Runtime::parsePropertyAttributes(const char *const attributesStr,
-                                             char *const stringStorage,
-                                             objc_property_attribute_t *attributes,
-                                             size_t *count) {
-  size_t attrFound = 0;
-
-  char attributesCopy[32];
-
-  strcpy(attributesCopy, attributesStr);
-
-  size_t storageIndex = 0;
-
-  char *token;
-  char *rest = attributesCopy;
-  while((token = strtok_r(rest, ",", &rest))) {
-    printf("token:%s\n", token);
-    size_t tokenLen = strlen(token);
-
-    switch (token[0]) {
-      case 'T': case 'V': {
-        objc_property_attribute_t tAttr;
-
-        stringStorage[storageIndex] = token[0];
-        stringStorage[storageIndex + 1] = '\0';
-        tAttr.name = stringStorage + storageIndex;
-
-        storageIndex += 2;
-
-        tAttr.value = stringStorage + storageIndex;
-        strcpy(stringStorage + storageIndex, token + 1);
-        storageIndex += tokenLen - 1;
-        strcpy(stringStorage + storageIndex, "\0");
-        storageIndex += 1;
-
-        attributes[attrFound++] = tAttr;
-
-        break;
-      }
-
-      case '&': case 'N': {
-        objc_property_attribute_t tAttr;
-
-        tAttr.name = stringStorage + storageIndex;
-        tAttr.value = NULL;
-        stringStorage[storageIndex] = token[0];
-        stringStorage[storageIndex + 1] = '\0';
-        storageIndex += 2;
-
-        attributes[attrFound++] = tAttr;
-
-        break;
-      }
-
-      default:
-        assert(false && "Unknown type");
-        break;
-    }
-  }
-
-  *count = attrFound;
-}
-
-  void Runtime::fixupClassListReferences() {
-    for (auto &pair: oldAndNewClassesMap) {
-      class64_t *classref = pair.first;
-      Class runtimeClass = pair.second;
-
-      *classref = *((class64_t *)runtimeClass);
-    }
-  }
 } }
-
