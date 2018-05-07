@@ -6,7 +6,7 @@
 MESSAGE(STATUS "Using LLVM.toolchain.macos.cmake")
 
 # brew install llvm
-set(LLVM_ROOT "/opt/llvm-3.9" CACHE PATH "Root of LLVM install.")
+set(LLVM_ROOT "/opt/llvm-6.0.0" CACHE PATH "Root of LLVM install.")
 
 # A bit of a sanity check:
 if (NOT EXISTS ${LLVM_ROOT}/include/llvm)
