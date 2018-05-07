@@ -2,17 +2,8 @@
 
 #include <objc/runtime.h>
 
-namespace mull { namespace objc {
-
-class RuntimeHelpers {
-public:
-  static bool isValidPointer(void *ptr);
-
-  static bool class_isRegistered(Class cls);
-
-  static Class class_getClassByName(const char *name);
-
-  static void class_dumpMethods(Class clz);
-};
-
-} } // namespace mull { namespace objc
+namespace objc {
+  bool objc_classIsRegistered(Class cls);
+  void objc_dumpClass(Class clz);
+  void objc_dumpClasses();
+} // namespace objc
